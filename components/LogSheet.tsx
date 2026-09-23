@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
 import { Sheet } from './Sheet';
+import { DateButton } from './DatePicker';
 import * as P from '@/lib/progress';
 
 export type LogSheetActivity = { id: string; name: string };
@@ -41,7 +41,6 @@ function quickDays(today: Date): { value: string; label: string }[] {
 
 export function LogSheet(p: LogSheetProps) {
   const editing = p.mode === 'edit';
-  const dateRef = useRef<HTMLInputElement>(null);
   const days = quickDays(P.parseDay(p.maxDate));
   // True when the chosen date is older than the three quick chips.
   const isOther = !days.some((d) => d.value === p.date);
@@ -99,44 +98,7 @@ export function LogSheet(p: LogSheetProps) {
               );
             })}
 
-            {/*
-              Older dates. The native input is hidden rather than styled --
-              browsers do not allow restyling the picker, and its mm/dd/yyyy
-              text does not match the app.
-
-              A hidden input alone is not enough: on desktop only the (now
-              invisible) calendar icon opens the picker, so the button calls
-              showPicker() explicitly. Mobile opens it on any tap, and older
-              browsers without showPicker fall back to focus + click.
-            */}
-            <button
-              type="button"
-              onClick={() => {
-                const el = dateRef.current;
-                if (!el) return;
-                try {
-                  el.showPicker();
-                } catch {
-                  el.focus();
-                  el.click();
-                }
-              }}
-              className={`relative h-11 rounded-full px-[18px] text-[15px] font-medium transition-colors duration-200 ${
-                isOther ? 'bg-accent text-accent-contrast' : 'bg-surface-2 text-ink'
-              }`}
-            >
-              {isOther ? P.formatDay(P.parseDay(p.date)) : 'Another day'}
-              <input
-                ref={dateRef}
-                type="date"
-                value={p.date}
-                max={p.maxDate}
-                tabIndex={-1}
-                aria-hidden="true"
-                onChange={(e) => e.target.value && p.onDateChange(e.target.value)}
-                className="pointer-events-none absolute bottom-0 left-1/2 h-0 w-0 opacity-0"
-              />
-            </button>
+            <DateButton value={p.date} max={p.maxDate} onChange={p.onDateChange} active={isOther} />
           </div>
         </fieldset>
 
