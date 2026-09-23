@@ -36,13 +36,13 @@ export type TodayScreenProps = {
 export function TodayScreen(p: TodayScreenProps) {
   const empty = !p.weekly.length && !p.monthly.length;
   return (
-    <section className="flex flex-col gap-8 animate-rise">
+    <section className="flex flex-col gap-6 animate-rise wide:gap-8">
       <header className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-1 wide:gap-2">
           <p className="text-sm text-ink-2">{p.dateLabel}</p>
           <h1 className={h1}>{p.greeting}</h1>
           {p.summary && !empty && (
-            <p className="mt-1 text-base leading-normal text-pretty text-ink-2"><span className="font-medium text-ink">{p.summary.main}</span>{p.summary.rest}</p>
+            <p className="mt-0.5 text-base leading-normal text-pretty text-ink-2 wide:mt-1"><span className="font-medium text-ink">{p.summary.main}</span>{p.summary.rest}</p>
           )}
         </div>
         {p.headerAction}
@@ -249,7 +249,7 @@ export type GoalsScreenProps = {
 
 export function GoalsScreen(p: GoalsScreenProps) {
   return (
-    <section className="flex flex-col gap-8 animate-rise">
+    <section className="flex flex-col gap-6 animate-rise wide:gap-8">
       <header className="flex flex-col gap-2">
         <p className="text-sm text-ink-2">{p.sub}</p>
         <h1 className={h1}>Goals</h1>

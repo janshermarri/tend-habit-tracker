@@ -363,7 +363,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
         browser tab the inset is 0 and the full padding applies.
         Bottom clears the 68px nav plus its own inset, not a hardcoded guess.
       */}
-      <main className="flex min-w-0 flex-1 justify-center px-[clamp(20px,5vw,56px)] pt-[max(12px,calc(clamp(28px,5vw,56px)-env(safe-area-inset-top)))] pb-[calc(68px+env(safe-area-inset-bottom)+20px)] wide:pb-[clamp(28px,5vw,56px)]">
+      <main className="flex min-w-0 flex-1 justify-center px-[clamp(20px,5vw,56px)] pt-[max(4px,calc(clamp(28px,5vw,56px)-env(safe-area-inset-top)))] pb-[calc(68px+env(safe-area-inset-bottom)+20px)] wide:pb-[clamp(28px,5vw,56px)]">
         <div className="w-full max-w-[1040px]">
           {habitDetail && (
             <HabitDetailScreen
