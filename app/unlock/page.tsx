@@ -1,4 +1,5 @@
 import { PinForm } from './pin-form';
+import { TendMark } from '@/components/icons';
 
 export const metadata = { title: 'Tend — locked' };
 
@@ -14,7 +15,10 @@ export default async function UnlockPage({
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6">
       <div className="flex flex-col items-center gap-2">
-        <h1 className="font-display text-3xl">Tend</h1>
+        <h1 className="flex items-center gap-2.5 font-serif text-3xl">
+          <span className="text-accent"><TendMark size={30} /></span>
+          Tend
+        </h1>
         <p className="text-sm text-ink-2">Enter your PIN to continue</p>
       </div>
       <PinForm next={safe} />

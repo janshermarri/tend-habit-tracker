@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { CheckInsIcon, GoalsIcon, TodayIcon, WeekIcon } from './icons';
+import { CheckInsIcon, GoalsIcon, TendMark, TodayIcon, WeekIcon } from './icons';
 
 export type Tab = 'today' | 'week' | 'checkins' | 'goals';
 
@@ -46,7 +46,7 @@ export function SideNav({ active, onChange, onToggleTheme, themeLabel = 'Dark mo
   return (
     <aside className="sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col gap-9 border-r border-line px-5 pt-9 pb-7 wide:flex">
       <div className="flex items-center gap-2.5 px-3">
-        <span className="size-[22px] rounded-full" style={{ background: 'conic-gradient(var(--accent) 0 70%, var(--ring-track) 0)' }} />
+        <span className="text-accent"><TendMark size={24} /></span>
         <span className="font-serif text-2xl">Tend</span>
       </div>
       <nav className="flex flex-col gap-1">

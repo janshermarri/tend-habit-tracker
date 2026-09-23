@@ -8,7 +8,7 @@
  * the UI moves on tap; the action calls revalidatePath('/'), which re-renders
  * this component with fresh rows and retires the optimistic entry.
  */
-import { useMemo, useOptimistic, useRef, useState, useTransition } from 'react';
+import { useMemo, useOptimistic, useState, useTransition } from 'react';
 import * as A from '@/lib/actions';
 import type { Dashboard } from '@/lib/queries';
 import * as P from '@/lib/progress';
@@ -85,9 +85,6 @@ export default function TendApp({ data }: { data: Dashboard }) {
   };
 
   /* ── mutations ── */
-  // Undo needs the real row id, which only exists after the insert resolves.
-  const pendingUndo = useRef<Promise<string> | null>(null);
-
   /** Mirrors resolveLoggedAt in lib/actions.ts so optimistic rows land in the right period. */
   const loggedAtFor = (date?: string | null): string => {
     if (!date) return new Date().toISOString();
@@ -102,20 +99,6 @@ export default function TendApp({ data }: { data: Dashboard }) {
     id: uid('pending'), habit_id: habitId, activity_id: activityId, note, logged_at: loggedAtFor(date),
   });
 
-  const quickLog = (h: Habit) => {
-    const aId = P.lastActivityId(h.id, logs, activities);
-    const draft = optimisticLog(h.id, aId, null);
-    const label = activities.find((a) => a.id === aId)?.name ?? h.name;
-
-    run({ kind: 'add', log: draft }, async () => {
-      const promise = A.addLog(h.id, aId, null);
-      pendingUndo.current = promise;
-      const realId = await promise;
-      setToast({ text: `${label} logged`, logId: realId });
-      window.setTimeout(() => setToast((t) => (t?.logId === realId ? null : t)), 4000);
-    });
-  };
-
   const undoLog = async (logId: string) => {
     setToast(null);
     run({ kind: 'remove', id: logId }, () => A.deleteLog(logId));
@@ -126,8 +109,14 @@ export default function TendApp({ data }: { data: Dashboard }) {
     const note = sheet.note.trim() || null;
     const { date } = sheet;
     if (sheet.mode === 'create') {
-      run({ kind: 'add', log: optimisticLog(sheet.habitId, sheet.activityId, note, date) },
-        () => A.addLog(sheet.habitId, sheet.activityId, note, date));
+      const label = activities.find((a) => a.id === sheet.activityId)?.name
+        ?? habits.find((h) => h.id === sheet.habitId)?.name
+        ?? 'Check-in';
+      run({ kind: 'add', log: optimisticLog(sheet.habitId, sheet.activityId, note, date) }, async () => {
+        const realId = await A.addLog(sheet.habitId, sheet.activityId, note, date);
+        setToast({ text: `${label} logged`, logId: realId });
+        window.setTimeout(() => setToast((t) => (t?.logId === realId ? null : t)), 4000);
+      });
     } else if (sheet.logId) {
       run({ kind: 'update', id: sheet.logId, activity_id: sheet.activityId, note, logged_at: loggedAtFor(date) },
         () => A.updateLog(sheet.logId!, sheet.activityId, note, date));
@@ -183,8 +172,9 @@ export default function TendApp({ data }: { data: Dashboard }) {
     const st = P.habitStats(h, logs, now);
     return {
       id: h.id, name: h.name, count: st.count, target: st.target, done: st.done, status: P.statusLine(st),
-      onLog: () => quickLog(h),
-      onOpen: () => setSheet({ mode: 'create', habitId: h.id, activityId: P.lastActivityId(h.id, logs, activities), note: '', date: P.toDateKey(now) }),
+      // The card opens the habit; the + opens the log form.
+      onLog: () => setSheet({ mode: 'create', habitId: h.id, activityId: P.lastActivityId(h.id, logs, activities), note: '', date: P.toDateKey(now) }),
+      onOpen: () => setHabitId(h.id),
     };
   };
   const sorted = [...habits].sort((a, b) => a.sort_order - b.sort_order);
@@ -298,6 +288,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
       }),
       recent: previewGroups(groupByDay(null, h.id)),
       onBack: () => setHabitId(null),
+      backLabel: tab === 'today' ? 'Today' : tab === 'checkins' ? 'Check-ins' : 'Progress',
       onEdit: () => openHabitForm(h),
       onLog: () => setSheet({ mode: 'create', habitId: h.id, activityId: P.lastActivityId(h.id, logs, activities), note: '', date: P.toDateKey(now) }),
       onSeeAll: () => openHistory(h.id),
@@ -374,7 +365,13 @@ export default function TendApp({ data }: { data: Dashboard }) {
       */}
       <main className="flex min-w-0 flex-1 justify-center px-[clamp(20px,5vw,56px)] pt-[max(12px,calc(clamp(28px,5vw,56px)-env(safe-area-inset-top)))] pb-[calc(68px+env(safe-area-inset-bottom)+20px)] wide:pb-[clamp(28px,5vw,56px)]">
         <div className="w-full max-w-[1040px]">
-          {tab === 'today' && (
+          {habitDetail && (
+            <HabitDetailScreen
+              {...habitDetail}
+              onOpenLog={(id) => { const l = logs.find((x) => x.id === id); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: l.note ?? '', date: P.toDateKey(l.logged_at) }); }}
+            />
+          )}
+          {!habitDetail && tab === 'today' && (
             <TodayScreen
               dateLabel={now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
               greeting={hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}
@@ -384,7 +381,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               headerAction={themeBtn}
             />
           )}
-          {tab === 'checkins' && historyVM && (
+          {!habitDetail && tab === 'checkins' && historyVM && (
             <CheckInsScreen
               sub={history.filter === 'all' ? `${historyVM.total} check-ins so far` : history.filter === 'notes' ? `${historyVM.total} with a note` : `${historyVM.total} ${habits.find((h) => h.id === history.filter)?.name.toLowerCase() ?? ''} check-ins`}
               filter={history.filter}
@@ -396,13 +393,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               onOpenLog={(id) => { const l = logs.find((x) => x.id === id); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: l.note ?? '', date: P.toDateKey(l.logged_at) }); }}
             />
           )}
-          {tab === 'week' && habitDetail && (
-            <HabitDetailScreen
-              {...habitDetail}
-              onOpenLog={(id) => { const l = logs.find((x) => x.id === id); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: l.note ?? '', date: P.toDateKey(l.logged_at) }); }}
-            />
-          )}
-          {tab === 'week' && !habitDetail && (
+          {!habitDetail && tab === 'week' && (
             <WeekScreen
               {...weekVM}
               onSeeAll={() => openHistory('all')}
@@ -417,7 +408,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               onAddHabit={() => openHabitForm()}
             />
           )}
-          {tab === 'goals' && !goal && (
+          {!habitDetail && tab === 'goals' && !goal && (
             <GoalsScreen
               sub={objectives.length ? `${objectives.length} objective${objectives.length === 1 ? '' : 's'} in motion` : 'Bigger things, a few months at a time'}
               objectives={objectives.map((o) => {
@@ -430,7 +421,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               onAddObjective={() => openObjForm()}
             />
           )}
-          {tab === 'goals' && goal && (() => {
+          {!habitDetail && tab === 'goals' && goal && (() => {
             const krs = keyResults.filter((k) => k.objective_id === goal.id).sort((a, b) => a.sort_order - b.sort_order);
             const start = P.parseDay(goal.start_date), end = P.parseDay(goal.end_date);
             const weeks = P.periodsBetween('week', start, end).length;

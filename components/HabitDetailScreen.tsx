@@ -22,6 +22,8 @@ export type HabitDetailScreenProps = {
   goals: { id: string; title: string; progress: number; note: string; onOpen: () => void }[];
   recent: CheckInGroup[];   // 3 most recent
   onBack: () => void;
+  /** Where Back returns to, e.g. "Today" */
+  backLabel?: string;
   onEdit: () => void;
   onLog: () => void;
   onSeeAll: () => void;
@@ -46,7 +48,7 @@ export function HabitDetailScreen(p: HabitDetailScreenProps) {
   return (
     <section className="flex max-w-[760px] flex-col gap-5 animate-rise wide:gap-7">
       <div className="-mt-2 flex items-center justify-between gap-3">
-        <button type="button" onClick={p.onBack} className="flex h-11 items-center gap-2.5 rounded-full pr-3.5 pl-2 text-[15px] text-ink-2 hover:text-ink"><ChevronIcon />Progress</button>
+        <button type="button" onClick={p.onBack} className="flex h-11 items-center gap-2.5 rounded-full pr-3.5 pl-2 text-[15px] text-ink-2 hover:text-ink"><ChevronIcon />{p.backLabel ?? 'Progress'}</button>
         <button type="button" onClick={p.onEdit} className="h-10 rounded-full border border-line bg-surface px-[18px] text-sm font-medium hover:border-accent">Edit</button>
       </div>
 

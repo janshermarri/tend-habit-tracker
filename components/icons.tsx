@@ -70,3 +70,17 @@ export function GoalsIcon() {
     </svg>
   );
 }
+
+/**
+ * The sprout mark from the logo package (svg/tend-mark-*.svg), inlined.
+ * Uses currentColor so it follows the theme instead of shipping two files.
+ */
+export function TendMark({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <path d="M24 41V23" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" />
+      <path d="M24 28C16 28 11 22.5 11 15C19 15 24 20 24 28Z" fill="currentColor" />
+      <path d="M24 23C24 14.5 29.5 8 37.5 8C37.5 16.5 32 23 24 23Z" fill="currentColor" />
+    </svg>
+  );
+}
