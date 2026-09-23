@@ -16,7 +16,7 @@ import { MonthCalendarCard, WeekTilesRow, type CalendarDay, type WeekTile } from
 import { ChevronIcon } from './icons';
 
 const grid = 'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]';
-const h1 = 'font-serif text-[38px] leading-[1.08] font-normal tracking-[-.015em]';
+const h1 = 'font-serif text-[clamp(30px,8vw,38px)] leading-[1.08] font-normal tracking-[-.015em]';
 
 type HabitVM = HabitCardProps & { id: string };
 
@@ -111,7 +111,7 @@ export type WeekScreenProps = {
 export function WeekScreen(p: WeekScreenProps) {
   const navBtn = 'grid size-11 place-items-center rounded-full bg-surface shadow-sm transition-opacity';
   return (
-    <section className="flex flex-col gap-7 animate-rise">
+    <section className="flex flex-col gap-5 animate-rise wide:gap-7">
       <Segmented<ProgressView> options={[{ value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]} value={p.view} onChange={p.onViewChange} />
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
@@ -196,7 +196,7 @@ export type CheckInsScreenProps = {
 
 export function CheckInsScreen(p: CheckInsScreenProps) {
   return (
-    <section className="flex max-w-[680px] flex-col gap-7 animate-rise">
+    <section className="flex max-w-[680px] flex-col gap-5 animate-rise wide:gap-7">
       {p.onBack && (
         <div className="-mt-2">
           <button type="button" onClick={p.onBack} className="flex h-11 items-center gap-2.5 rounded-full pr-3.5 pl-2 text-[15px] text-ink-2 hover:text-ink"><ChevronIcon />{p.backLabel}</button>
@@ -293,7 +293,7 @@ export type GoalDetailScreenProps = {
 
 export function GoalDetailScreen(p: GoalDetailScreenProps) {
   return (
-    <section className="flex max-w-[760px] flex-col gap-7 animate-rise">
+    <section className="flex max-w-[760px] flex-col gap-5 animate-rise wide:gap-7">
       <div className="-mt-2 flex items-center justify-between gap-3">
         <button type="button" onClick={p.onBack} className="flex h-11 items-center gap-2.5 rounded-full pr-3.5 pl-2 text-[15px] text-ink-2 hover:text-ink"><ChevronIcon />Goals</button>
         <button type="button" onClick={p.onEdit} className="h-10 rounded-full border border-line bg-surface px-[18px] text-sm font-medium hover:border-accent">Edit</button>
