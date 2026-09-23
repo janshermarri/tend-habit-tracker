@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────
+   Design tokens — single source of truth (light + dark).
+   Toggle dark mode with <html data-theme="dark">.
+   These exact variables are also used by the HTML prototype.
+   ───────────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* color */
+  --bg: #F3F1EC;
+  --surface: #FBFAF7;
+  --surface-2: #ECE9E3;
+  --ink: #23251F;
+  --ink-2: #5C5F57;
+  --ink-3: #8C8E86;          /* decorative / placeholder only */
+  --line: #E0DCD4;
+  --accent: #5A7862;         /* muted sage */
+  --accent-ink: #4A6652;     /* sage for text on bg/surface */
+  --accent-soft: #E0E8DF;
+  --accent-contrast: #FBFAF7;/* text on --accent */
+  --ring-track: #E3E5DE;
+  --overlay: rgba(30, 32, 28, .32);
+
+  /* elevation */
+  --elev-1: 0 1px 2px rgba(35,37,31,.05), 0 1px 1px rgba(35,37,31,.03);
+  --elev-2: 0 10px 28px -12px rgba(35,37,31,.18), 0 2px 6px rgba(35,37,31,.05);
+  --elev-3: 0 30px 80px -24px rgba(35,37,31,.35);
+
+  /* radius */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+
+  /* spacing — 4px base, matches Tailwind's default scale (p-1 = 4px … p-14 = 56px) */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-14: 56px;
+
+  /* type */
+  --type-sans: var(--font-instrument, 'Instrument Sans'), ui-sans-serif, system-ui, sans-serif;
+  --type-serif: var(--font-newsreader, 'Newsreader'), ui-serif, Georgia, serif;
+
+  /* motion */
+  --ease: cubic-bezier(.2, .7, .2, 1);
+
+  color-scheme: light;
 }
 
+[data-theme="dark"] {
+  --bg: #141614;
+  --surface: #1C1F1C;
+  --surface-2: #262A26;
+  --ink: #E9EAE4;
+  --ink-2: #A4A79E;
+  --ink-3: #72756D;
+  --line: #2E322E;
+  --accent: #8FAE97;
+  --accent-ink: #A9C4AF;
+  --accent-soft: #263129;
+  --accent-contrast: #121412;
+  --ring-track: #2A2F2A;
+  --overlay: rgba(0, 0, 0, .55);
+  --elev-1: 0 1px 2px rgba(0,0,0,.3);
+  --elev-2: 0 12px 30px -12px rgba(0,0,0,.6);
+  --elev-3: 0 30px 80px -20px rgba(0,0,0,.7);
+  color-scheme: dark;
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Expose tokens as Tailwind utilities:
+   bg-surface · text-ink-2 · bg-accent-soft · rounded-lg · shadow-md · font-serif · ease-calm · wide:… */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-ring-track: var(--ring-track);
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--type-sans);
+  --font-serif: var(--type-serif);
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+
+  --shadow-sm: var(--elev-1);
+  --shadow-md: var(--elev-2);
+  --shadow-lg: var(--elev-3);
+
+  --ease-calm: var(--ease);
+
+  --animate-rise: rise 380ms var(--ease) both;
+  --animate-fade-in: fade-in 240ms ease both;
+  --animate-fade-out: fade-out 200ms ease forwards;
+  --animate-sheet-up: sheet-up 380ms var(--ease) both;
+  --animate-sheet-down: sheet-down 220ms ease-in forwards;
+  --animate-pop-in: pop-in 280ms var(--ease) both;
+  --animate-pop-out: pop-out 200ms ease forwards;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Desktop breakpoint: side rail instead of bottom nav, dialogs instead of sheets */
+@theme {
+  --breakpoint-wide: 55rem; /* 880px */
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fade-out { from { opacity: 1 } to { opacity: 0 } }
+@keyframes sheet-up { from { transform: translateY(100%) } to { transform: none } }
+@keyframes sheet-down { from { transform: none } to { transform: translateY(100%) } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(8px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes pop-out { from { opacity: 1; transform: none } to { opacity: 0; transform: translateY(8px) scale(.98) } }
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--type-sans);
+  -webkit-font-smoothing: antialiased;
+}
+::placeholder { color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
 }
