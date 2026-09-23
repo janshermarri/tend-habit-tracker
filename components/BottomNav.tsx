@@ -39,10 +39,10 @@ export function BottomNav({ active, onChange }: BottomNavProps) {
   );
 }
 
-type SideNavProps = BottomNavProps & { onToggleTheme?: () => void; themeLabel?: string };
+type SideNavProps = BottomNavProps & { onToggleTheme?: () => void; themeLabel?: string; themeIcon?: React.ReactNode };
 
 /** Desktop rail (shown from `wide:` up). */
-export function SideNav({ active, onChange, onToggleTheme, themeLabel = 'Dark mode' }: SideNavProps) {
+export function SideNav({ active, onChange, onToggleTheme, themeLabel = 'Dark mode', themeIcon }: SideNavProps) {
   return (
     <aside className="sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col gap-9 border-r border-line px-5 pt-9 pb-7 wide:flex">
       <div className="flex items-center gap-2.5 px-3">
@@ -67,7 +67,7 @@ export function SideNav({ active, onChange, onToggleTheme, themeLabel = 'Dark mo
       </nav>
       {onToggleTheme && (
         <button type="button" onClick={onToggleTheme} className="mt-auto flex h-11 items-center gap-3 rounded-md px-3 text-sm text-ink-2 hover:text-ink">
-          <span className="size-4 rounded-full border-[1.5px] border-current" style={{ background: 'linear-gradient(90deg, currentColor 50%, transparent 50%)' }} />
+          {themeIcon ?? <span className="size-4 rounded-full border-[1.5px] border-current" style={{ background: 'linear-gradient(90deg, currentColor 50%, transparent 50%)' }} />}
           {themeLabel}
         </button>
       )}

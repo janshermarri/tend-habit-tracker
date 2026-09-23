@@ -21,6 +21,7 @@ import { ObjectiveForm } from '@/components/ObjectiveForm';
 import { emptyHabitDraft, emptyKeyResult, emptyObjectiveDraft, type HabitDraft, type ObjectiveDraft } from '@/lib/drafts';
 import { Toast } from '@/components/Toast';
 import { HabitDetailScreen } from '@/components/HabitDetailScreen';
+import { MoonIcon, SunIcon, SystemThemeIcon } from '@/components/icons';
 import { CheckInsScreen, GoalDetailScreen, GoalsScreen, TodayScreen, WeekScreen, type CheckInFilter } from '@/components/screens';
 import type { KeyResultRowProps, PeriodCell } from '@/components/KeyResultRow';
 
@@ -73,7 +74,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
   const openHistory = (filter: CheckInFilter) => { setHistory({ filter, limit: 40 }); setTab('checkins'); setGoalId(null); };
 
   const [sheet, setSheet] = useState<LogSheetState>(null);
-  const [toast, setToast] = useState<{ text: string; logId: string } | null>(null);
+  const [toast, setToast] = useState<{ text: string; logId?: string } | null>(null);
   const [habitForm, setHabitForm] = useState<{ id?: string; draft: HabitDraft } | null>(null);
   const [objForm, setObjForm] = useState<{ id?: string; draft: ObjectiveDraft } | null>(null);
 
@@ -342,22 +343,31 @@ export default function TendApp({ data }: { data: Dashboard }) {
   const goal = objectives.find((o) => o.id === goalId);
   const tfLabel = (m: number) => `${m} month${m === 1 ? '' : 's'}`;
 
+  // The icon shows the current mode; the toast names it, since three states
+  // are more than an icon alone can make obvious.
+  const cycleTheme = () => {
+    const next = theme.pref === 'system' ? 'light' : theme.pref === 'light' ? 'dark' : 'system';
+    theme.choose(next);
+    const text = next === 'system'
+      ? `Following your device · ${theme.system}`
+      : next === 'light' ? 'Light mode' : 'Dark mode';
+    setToast({ text });
+    window.setTimeout(() => setToast((t) => (t && !t.logId && t.text === text ? null : t)), 2600);
+  };
+
+  const themeIcon = theme.pref === 'system'
+    ? <SystemThemeIcon />
+    : theme.pref === 'light' ? <SunIcon /> : <MoonIcon />;
+
   const themeBtn = (
     <button
       type="button"
-      onClick={theme.cycle}
+      onClick={cycleTheme}
       aria-label={`${theme.label}. Tap to change.`}
       title={theme.label}
-      className="grid size-11 shrink-0 place-items-center rounded-full bg-surface shadow-sm wide:hidden"
+      className="grid size-11 shrink-0 place-items-center rounded-full bg-surface text-ink-2 shadow-sm wide:hidden"
     >
-      {theme.pref === 'system' ? (
-        // Half-filled: following the OS.
-        <span className="size-4 rounded-full border-[1.5px] border-current" style={{ background: 'linear-gradient(90deg, currentColor 50%, transparent 50%)' }} />
-      ) : theme.pref === 'light' ? (
-        <span className="size-4 rounded-full border-[1.5px] border-current" />
-      ) : (
-        <span className="size-4 rounded-full border-[1.5px] border-current bg-current" />
-      )}
+      {themeIcon}
     </button>
   );
   const sheetHabit = habits.find((h) => h.id === sheet?.habitId);
@@ -368,7 +378,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
     // dvh, not vh: on iOS 100vh can exceed the visible viewport in an installed
     // PWA, which made short pages scroll with dead space above the content.
     <div className="flex min-h-dvh bg-bg text-ink">
-      <SideNav active={tab} onChange={(t) => { setTab(t); setGoalId(null); setHabitId(null); setHistory({ filter: 'all', limit: 40 }); }} onToggleTheme={theme.cycle} themeLabel={theme.label} />
+      <SideNav active={tab} onChange={(t) => { setTab(t); setGoalId(null); setHabitId(null); setHistory({ filter: 'all', limit: 40 }); }} onToggleTheme={cycleTheme} themeLabel={theme.label} themeIcon={themeIcon} />
 
       {/*
         Top padding is reduced by the safe-area inset: in a standalone PWA the
@@ -464,8 +474,12 @@ export default function TendApp({ data }: { data: Dashboard }) {
       {toast && (
         <Toast
           text={toast.text}
-          onUndo={() => undoLog(toast.logId)}
-          onNote={() => { const l = logs.find((x) => x.id === toast.logId); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: '', date: P.toDateKey(l.logged_at) }); setToast(null); }}
+          // Undo and Add note only apply to a just-saved check-in; a plain
+          // notice (e.g. the theme) shows its text alone.
+          onUndo={toast.logId ? () => undoLog(toast.logId!) : undefined}
+          onNote={toast.logId
+            ? () => { const l = logs.find((x) => x.id === toast.logId); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: '', date: P.toDateKey(l.logged_at) }); setToast(null); }
+            : undefined}
         />
       )}
 

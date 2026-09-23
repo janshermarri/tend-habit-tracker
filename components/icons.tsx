@@ -84,3 +84,32 @@ export function TendMark({ size = 22 }: { size?: number }) {
     </svg>
   );
 }
+
+/** Light mode: sun. */
+export function SunIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4.2" />
+      <path d="M12 2.6v2.2M12 19.2v2.2M21.4 12h-2.2M4.8 12H2.6M18.6 5.4l-1.6 1.6M7 17l-1.6 1.6M18.6 18.6L17 17M7 7 5.4 5.4" />
+    </svg>
+  );
+}
+
+/** Dark mode: moon. */
+export function MoonIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 14.2A8.2 8.2 0 1 1 9.8 4a6.6 6.6 0 0 0 10.2 10.2Z" />
+    </svg>
+  );
+}
+
+/** Following the system: a small display. */
+export function SystemThemeIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2.8" y="4" width="18.4" height="12.4" rx="2" />
+      <path d="M8.5 20h7M12 16.4V20" />
+    </svg>
+  );
+}
