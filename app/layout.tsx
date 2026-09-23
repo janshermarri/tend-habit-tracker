@@ -5,7 +5,26 @@ import './globals.css';
 const sans = Instrument_Sans({ subsets: ['latin'], variable: '--font-instrument', weight: ['400', '500', '600'] });
 const serif = Newsreader({ subsets: ['latin'], variable: '--font-newsreader', weight: ['400', '500'] });
 
-export const metadata: Metadata = { title: 'Tend', description: 'A calm habit and goal tracker', manifest: '/manifest.webmanifest' };
+export const metadata: Metadata = {
+  title: 'Tend',
+  description: 'A calm habit and goal tracker',
+  manifest: '/manifest.webmanifest',
+  // Standalone mode + a home-screen icon; iOS reads apple-touch-icon, not the manifest.
+  appleWebApp: { capable: true, title: 'Tend', statusBarStyle: 'default' },
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  openGraph: {
+    title: 'Tend',
+    description: 'A calm habit and goal tracker',
+    images: ['/tend-social-1200x630.png'],
+    type: 'website',
+  },
+};
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

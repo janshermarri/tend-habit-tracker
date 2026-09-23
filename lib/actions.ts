@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { db } from './supabase/server';
 import { SESSION_COOKIE, SESSION_MAX_AGE, issueSession, isSessionValid, verifyPin } from './session';
-import { checkLimit, clear, recordFailure } from './rate-limit';
+import { clear, registerAttempt } from './rate-limit';
 import type { HabitDraft, ObjectiveDraft } from './drafts';
 import type { UnlockState } from './unlock-state';
 import * as P from './progress';
@@ -37,18 +37,19 @@ export async function unlock(_prev: UnlockState, formData: FormData): Promise<Un
   const pin = String(formData.get('pin') ?? '');
   const next = String(formData.get('next') ?? '/');
 
-  const limit = checkLimit('pin');
+  // Counts this attempt as it checks, so the limit cannot be bypassed by
+  // racing several requests through at once.
+  const limit = await registerAttempt('pin');
   if (!limit.allowed) {
     const mins = Math.ceil(limit.retryAfterSec / 60);
     return { error: `Too many attempts. Try again in ${mins} minute${mins === 1 ? '' : 's'}.` };
   }
 
   if (!verifyPin(pin)) {
-    recordFailure('pin');
     return { error: 'That PIN does not match.' };
   }
 
-  clear('pin');
+  await clear('pin');
   const jar = await cookies();
   jar.set(SESSION_COOKIE, issueSession(), {
     httpOnly: true,
