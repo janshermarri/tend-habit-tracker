@@ -185,11 +185,22 @@ export async function saveHabit(id: string | null, draft: HabitDraft): Promise<v
   const { error: delErr } = await stale;
   if (delErr) throw new Error(delErr.message);
 
-  if (keep.length) {
-    const rows = keep.map((a) => (a.id
-      ? { id: a.id, habit_id: habitId!, name: a.name.trim() }
-      : { habit_id: habitId!, name: a.name.trim() }));
-    const { error } = await supabase.from('activities').upsert(rows);
+  // Split rather than upsert the lot: PostgREST unions the columns across a
+  // batch, so a new row alongside existing ones is sent with an explicit
+  // id: null and never reaches the gen_random_uuid() default.
+  const existing = keep.filter((a) => a.id);
+  const added = keep.filter((a) => !a.id);
+
+  if (existing.length) {
+    const { error } = await supabase
+      .from('activities')
+      .upsert(existing.map((a) => ({ id: a.id!, habit_id: habitId!, name: a.name.trim() })));
+    if (error) throw new Error(error.message);
+  }
+  if (added.length) {
+    const { error } = await supabase
+      .from('activities')
+      .insert(added.map((a) => ({ habit_id: habitId!, name: a.name.trim() })));
     if (error) throw new Error(error.message);
   }
 
@@ -243,17 +254,30 @@ export async function saveObjective(id: string | null, draft: ObjectiveDraft): P
   const { error: delErr } = await stale;
   if (delErr) throw new Error(delErr.message);
 
-  if (krs.length) {
-    const rows = krs.map((k, i) => {
-      const base = { objective_id: objectiveId!, title: k.title.trim(), sort_order: i, type: k.type };
-      const withId = k.id ? { ...base, id: k.id } : base;
-      if (k.type === 'milestone') return { ...withId, done: k.done ?? false };
-      if (k.type === 'number') {
-        return { ...withId, current_value: k.current_value ?? 0, target_value: k.target_value ?? 0, unit: k.unit || null };
-      }
-      return { ...withId, habit_id: k.habit_id ?? null, target_periods: k.target_periods ?? 1 };
-    });
-    const { error } = await supabase.from('key_results').upsert(rows);
+  // Same split as activities: a batch mixing rows with and without ids sends
+  // id: null for the new ones.
+  const shape = (k: (typeof krs)[number], i: number) => {
+    const base = { objective_id: objectiveId!, title: k.title.trim(), sort_order: i, type: k.type };
+    if (k.type === 'milestone') return { ...base, done: k.done ?? false };
+    if (k.type === 'number') {
+      return { ...base, current_value: k.current_value ?? 0, target_value: k.target_value ?? 0, unit: k.unit || null };
+    }
+    return { ...base, habit_id: k.habit_id ?? null, target_periods: k.target_periods ?? 1 };
+  };
+
+  const updates = krs.map((k, i) => ({ k, i })).filter(({ k }) => k.id);
+  const inserts = krs.map((k, i) => ({ k, i })).filter(({ k }) => !k.id);
+
+  if (updates.length) {
+    const { error } = await supabase
+      .from('key_results')
+      .upsert(updates.map(({ k, i }) => ({ ...shape(k, i), id: k.id! })));
+    if (error) throw new Error(error.message);
+  }
+  if (inserts.length) {
+    const { error } = await supabase
+      .from('key_results')
+      .insert(inserts.map(({ k, i }) => shape(k, i)));
     if (error) throw new Error(error.message);
   }
 
