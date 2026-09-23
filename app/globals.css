@@ -126,6 +126,16 @@ html, body {
   color: var(--ink);
   font-family: var(--type-sans);
   -webkit-font-smoothing: antialiased;
+  /* Stops the rubber-band bounce past the top and bottom, which makes an
+     installed PWA feel like a web page rather than an app. */
+  overscroll-behavior-y: none;
+}
+
+/* The app is its own scroll container; a always-visible bar over a short page
+   is noise. Scrolling still works, and desktop keeps a bar when it overflows. */
+@media (pointer: coarse) {
+  html { scrollbar-width: none; }
+  html::-webkit-scrollbar { display: none; }
 }
 ::placeholder { color: var(--ink-3); }
 

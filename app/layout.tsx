@@ -35,10 +35,27 @@ export const viewport: Viewport = {
   ],
 };
 
+/**
+ * Applies the theme before first paint.
+ *
+ * Runs blocking in <head>: doing this in an effect would show a flash of the
+ * wrong theme on every load. Reads the saved override, else follows the OS.
+ */
+const themeScript = `
+(function(){try{
+  var s=localStorage.getItem('tend-theme');
+  var d=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme=(s==='light'||s==='dark')?s:(d?'dark':'light');
+}catch(e){}})();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Set data-theme="dark" on <html> for dark mode (e.g. from a user setting or prefers-color-scheme).
   return (
-    <html lang="en" data-theme="light" className={`${sans.variable} ${serif.variable}`}>
+    // suppressHydrationWarning: the script rewrites data-theme before React hydrates.
+    <html lang="en" data-theme="light" className={`${sans.variable} ${serif.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );

@@ -10,6 +10,7 @@
  */
 import { useMemo, useOptimistic, useState, useTransition } from 'react';
 import * as A from '@/lib/actions';
+import { useTheme } from '@/lib/use-theme';
 import type { Dashboard } from '@/lib/queries';
 import * as P from '@/lib/progress';
 import type { Habit, KeyResult, Log, Objective, Period, Timeframe } from '@/lib/types';
@@ -70,7 +71,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
   const [habitId, setHabitId] = useState<string | null>(null);
   const [history, setHistory] = useState<{ filter: CheckInFilter; limit: number }>({ filter: 'all', limit: 40 });
   const openHistory = (filter: CheckInFilter) => { setHistory({ filter, limit: 40 }); setTab('checkins'); setGoalId(null); };
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
   const [sheet, setSheet] = useState<LogSheetState>(null);
   const [toast, setToast] = useState<{ text: string; logId: string } | null>(null);
   const [habitForm, setHabitForm] = useState<{ id?: string; draft: HabitDraft } | null>(null);
@@ -78,11 +79,8 @@ export default function TendApp({ data }: { data: Dashboard }) {
 
   const now = new Date();
   const ctx = { habits, logs };
-  const toggleTheme = () => {
-    const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
-  };
+  const theme = useTheme();
+
 
   /* ── mutations ── */
   /** Mirrors resolveLoggedAt in lib/actions.ts so optimistic rows land in the right period. */
@@ -345,8 +343,21 @@ export default function TendApp({ data }: { data: Dashboard }) {
   const tfLabel = (m: number) => `${m} month${m === 1 ? '' : 's'}`;
 
   const themeBtn = (
-    <button type="button" onClick={toggleTheme} aria-label="Toggle dark mode" className="grid size-11 shrink-0 place-items-center rounded-full bg-surface shadow-sm wide:hidden">
-      <span className="size-4 rounded-full border-[1.5px] border-current" style={{ background: 'linear-gradient(90deg, currentColor 50%, transparent 50%)' }} />
+    <button
+      type="button"
+      onClick={theme.cycle}
+      aria-label={`${theme.label}. Tap to change.`}
+      title={theme.label}
+      className="grid size-11 shrink-0 place-items-center rounded-full bg-surface shadow-sm wide:hidden"
+    >
+      {theme.pref === 'system' ? (
+        // Half-filled: following the OS.
+        <span className="size-4 rounded-full border-[1.5px] border-current" style={{ background: 'linear-gradient(90deg, currentColor 50%, transparent 50%)' }} />
+      ) : theme.pref === 'light' ? (
+        <span className="size-4 rounded-full border-[1.5px] border-current" />
+      ) : (
+        <span className="size-4 rounded-full border-[1.5px] border-current bg-current" />
+      )}
     </button>
   );
   const sheetHabit = habits.find((h) => h.id === sheet?.habitId);
@@ -354,8 +365,10 @@ export default function TendApp({ data }: { data: Dashboard }) {
   const editingHabit = habits.find((h) => h.id === habitForm?.id);
 
   return (
-    <div className="flex min-h-screen bg-bg text-ink">
-      <SideNav active={tab} onChange={(t) => { setTab(t); setGoalId(null); setHabitId(null); setHistory({ filter: 'all', limit: 40 }); }} onToggleTheme={toggleTheme} themeLabel={theme === 'light' ? 'Dark mode' : 'Light mode'} />
+    // dvh, not vh: on iOS 100vh can exceed the visible viewport in an installed
+    // PWA, which made short pages scroll with dead space above the content.
+    <div className="flex min-h-dvh bg-bg text-ink">
+      <SideNav active={tab} onChange={(t) => { setTab(t); setGoalId(null); setHabitId(null); setHistory({ filter: 'all', limit: 40 }); }} onToggleTheme={theme.cycle} themeLabel={theme.label} />
 
       {/*
         Top padding is reduced by the safe-area inset: in a standalone PWA the
