@@ -71,11 +71,45 @@ export async function lock(): Promise<void> {
 
 /* ── logs ──────────────────────────────────────────────────────────────── */
 
-export async function addLog(habitId: string, activityId: string | null, note: string | null): Promise<string> {
+/**
+ * Resolve a YYYY-MM-DD to a timestamp for storage.
+ *
+ * Today keeps the real clock time, so "logged at 19:00" stays accurate.
+ * A past date gets midday: midnight would sit close enough to the boundary
+ * that a timezone shift could move the log into the adjacent day, which would
+ * silently put it in the wrong week.
+ *
+ * Future dates are rejected — a typo should not create a phantom entry that
+ * distorts "days left" and period stats.
+ */
+function resolveLoggedAt(date: string | null | undefined): string {
+  const now = new Date();
+  if (!date) return now.toISOString();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('That date is not valid.');
+
+  const day = P.parseDay(date);
+  if (Number.isNaN(day.getTime())) throw new Error('That date is not valid.');
+
+  const today = P.startOfDay(now);
+  if (day.getTime() > today.getTime()) throw new Error('You can only log today or a past date.');
+  if (day.getTime() === today.getTime()) return now.toISOString();
+
+  const midday = new Date(day);
+  midday.setHours(12, 0, 0, 0);
+  return midday.toISOString();
+}
+
+export async function addLog(
+  habitId: string,
+  activityId: string | null,
+  note: string | null,
+  date?: string | null,
+): Promise<string> {
   await requireSession();
   const { data, error } = await db()
     .from('logs')
-    .insert({ habit_id: habitId, activity_id: activityId, note, logged_at: new Date().toISOString() })
+    .insert({ habit_id: habitId, activity_id: activityId, note, logged_at: resolveLoggedAt(date) })
     .select('id')
     .single();
   if (error) throw new Error(error.message);
@@ -83,9 +117,27 @@ export async function addLog(habitId: string, activityId: string | null, note: s
   return data.id as string;
 }
 
-export async function updateLog(id: string, activityId: string | null, note: string | null): Promise<void> {
+export async function updateLog(
+  id: string,
+  activityId: string | null,
+  note: string | null,
+  date?: string | null,
+): Promise<void> {
   await requireSession();
-  const { error } = await db().from('logs').update({ activity_id: activityId, note }).eq('id', id);
+  const patch: { activity_id: string | null; note: string | null; logged_at?: string } = {
+    activity_id: activityId,
+    note,
+  };
+
+  // Only rewrite the timestamp when the date actually moved, so editing a note
+  // does not reset the original time of day.
+  if (date) {
+    const { data } = await db().from('logs').select('logged_at').eq('id', id).single();
+    const current = data?.logged_at ? P.toDateKey(data.logged_at as string) : null;
+    if (current !== date) patch.logged_at = resolveLoggedAt(date);
+  }
+
+  const { error } = await db().from('logs').update(patch).eq('id', id);
   if (error) throw new Error(error.message);
   refresh();
 }

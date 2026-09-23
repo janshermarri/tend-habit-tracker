@@ -27,11 +27,11 @@ const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const SUGGESTIONS = ['Physical activity', 'Meditation', 'Reading', 'Call family'];
 
-type LogSheetState = { mode: 'create' | 'edit'; habitId: string; logId?: string; activityId: string | null; note: string } | null;
+type LogSheetState = { mode: 'create' | 'edit'; habitId: string; logId?: string; activityId: string | null; note: string; date: string } | null;
 
 type OptimisticOp =
   | { kind: 'add'; log: Log }
-  | { kind: 'update'; id: string; activity_id: string | null; note: string | null }
+  | { kind: 'update'; id: string; activity_id: string | null; note: string | null; logged_at?: string }
   | { kind: 'remove'; id: string };
 
 export default function TendApp({ data }: { data: Dashboard }) {
@@ -41,7 +41,9 @@ export default function TendApp({ data }: { data: Dashboard }) {
   const [logs, applyOptimistic] = useOptimistic(data.logs, (state: Log[], op: OptimisticOp) => {
     if (op.kind === 'add') return [...state, op.log];
     if (op.kind === 'remove') return state.filter((l) => l.id !== op.id);
-    return state.map((l) => (l.id === op.id ? { ...l, activity_id: op.activity_id, note: op.note } : l));
+    return state.map((l) => (l.id === op.id
+      ? { ...l, activity_id: op.activity_id, note: op.note, logged_at: op.logged_at ?? l.logged_at }
+      : l));
   });
 
   const [, startTransition] = useTransition();
@@ -86,8 +88,18 @@ export default function TendApp({ data }: { data: Dashboard }) {
   // Undo needs the real row id, which only exists after the insert resolves.
   const pendingUndo = useRef<Promise<string> | null>(null);
 
-  const optimisticLog = (habitId: string, activityId: string | null, note: string | null): Log => ({
-    id: uid('pending'), habit_id: habitId, activity_id: activityId, note, logged_at: new Date().toISOString(),
+  /** Mirrors resolveLoggedAt in lib/actions.ts so optimistic rows land in the right period. */
+  const loggedAtFor = (date?: string | null): string => {
+    if (!date) return new Date().toISOString();
+    const day = P.parseDay(date);
+    if (P.toDateKey(day) === P.toDateKey(now)) return new Date().toISOString();
+    const midday = new Date(day);
+    midday.setHours(12, 0, 0, 0);
+    return midday.toISOString();
+  };
+
+  const optimisticLog = (habitId: string, activityId: string | null, note: string | null, date?: string | null): Log => ({
+    id: uid('pending'), habit_id: habitId, activity_id: activityId, note, logged_at: loggedAtFor(date),
   });
 
   const quickLog = (h: Habit) => {
@@ -112,12 +124,13 @@ export default function TendApp({ data }: { data: Dashboard }) {
   const saveSheet = () => {
     if (!sheet) return;
     const note = sheet.note.trim() || null;
+    const { date } = sheet;
     if (sheet.mode === 'create') {
-      run({ kind: 'add', log: optimisticLog(sheet.habitId, sheet.activityId, note) },
-        () => A.addLog(sheet.habitId, sheet.activityId, note));
+      run({ kind: 'add', log: optimisticLog(sheet.habitId, sheet.activityId, note, date) },
+        () => A.addLog(sheet.habitId, sheet.activityId, note, date));
     } else if (sheet.logId) {
-      run({ kind: 'update', id: sheet.logId, activity_id: sheet.activityId, note },
-        () => A.updateLog(sheet.logId!, sheet.activityId, note));
+      run({ kind: 'update', id: sheet.logId, activity_id: sheet.activityId, note, logged_at: loggedAtFor(date) },
+        () => A.updateLog(sheet.logId!, sheet.activityId, note, date));
     }
     setSheet(null);
   };
@@ -171,7 +184,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
     return {
       id: h.id, name: h.name, count: st.count, target: st.target, done: st.done, status: P.statusLine(st),
       onLog: () => quickLog(h),
-      onOpen: () => setSheet({ mode: 'create', habitId: h.id, activityId: P.lastActivityId(h.id, logs, activities), note: '' }),
+      onOpen: () => setSheet({ mode: 'create', habitId: h.id, activityId: P.lastActivityId(h.id, logs, activities), note: '', date: P.toDateKey(now) }),
     };
   };
   const sorted = [...habits].sort((a, b) => a.sort_order - b.sort_order);
@@ -286,7 +299,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
       recent: previewGroups(groupByDay(null, h.id)),
       onBack: () => setHabitId(null),
       onEdit: () => openHabitForm(h),
-      onLog: () => setSheet({ mode: 'create', habitId: h.id, activityId: P.lastActivityId(h.id, logs, activities), note: '' }),
+      onLog: () => setSheet({ mode: 'create', habitId: h.id, activityId: P.lastActivityId(h.id, logs, activities), note: '', date: P.toDateKey(now) }),
       onSeeAll: () => openHistory(h.id),
     };
   })();
@@ -374,13 +387,13 @@ export default function TendApp({ data }: { data: Dashboard }) {
               months={historyVM.months}
               remaining={historyVM.remaining}
               onMore={() => setHistory((h) => ({ ...h, limit: h.limit + 40 }))}
-              onOpenLog={(id) => { const l = logs.find((x) => x.id === id); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: l.note ?? '' }); }}
+              onOpenLog={(id) => { const l = logs.find((x) => x.id === id); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: l.note ?? '', date: P.toDateKey(l.logged_at) }); }}
             />
           )}
           {tab === 'week' && habitDetail && (
             <HabitDetailScreen
               {...habitDetail}
-              onOpenLog={(id) => { const l = logs.find((x) => x.id === id); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: l.note ?? '' }); }}
+              onOpenLog={(id) => { const l = logs.find((x) => x.id === id); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: l.note ?? '', date: P.toDateKey(l.logged_at) }); }}
             />
           )}
           {tab === 'week' && !habitDetail && (
@@ -394,7 +407,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               canGoNext={(view === 'month' ? monthOffset : weekOffset) < 0}
               onPrev={() => (view === 'month' ? setMonthOffset((x) => x - 1) : setWeekOffset((w) => w - 1))}
               onNext={() => (view === 'month' ? setMonthOffset((x) => Math.min(0, x + 1)) : setWeekOffset((w) => Math.min(0, w + 1)))}
-              onOpenLog={(id) => { const l = logs.find((x) => x.id === id); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: l.note ?? '' }); }}
+              onOpenLog={(id) => { const l = logs.find((x) => x.id === id); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: l.note ?? '', date: P.toDateKey(l.logged_at) }); }}
               onAddHabit={() => openHabitForm()}
             />
           )}
@@ -442,7 +455,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
         <Toast
           text={toast.text}
           onUndo={() => undoLog(toast.logId)}
-          onNote={() => { const l = logs.find((x) => x.id === toast.logId); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: '' }); setToast(null); }}
+          onNote={() => { const l = logs.find((x) => x.id === toast.logId); if (l) setSheet({ mode: 'edit', habitId: l.habit_id, logId: l.id, activityId: l.activity_id, note: '', date: P.toDateKey(l.logged_at) }); setToast(null); }}
         />
       )}
 
@@ -458,6 +471,9 @@ export default function TendApp({ data }: { data: Dashboard }) {
         note={sheet?.note ?? ''}
         onSelectActivity={(id) => setSheet((s) => s && { ...s, activityId: id })}
         onNoteChange={(note) => setSheet((s) => s && { ...s, note })}
+        date={sheet?.date ?? P.toDateKey(now)}
+        maxDate={P.toDateKey(now)}
+        onDateChange={(date) => setSheet((s) => s && { ...s, date })}
         onSave={saveSheet}
         onRemove={() => {
           if (sheet?.logId) run({ kind: 'remove', id: sheet.logId }, () => A.deleteLog(sheet.logId!));

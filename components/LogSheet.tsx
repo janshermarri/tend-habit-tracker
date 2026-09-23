@@ -1,6 +1,7 @@
 'use client';
 
 import { Sheet } from './Sheet';
+import * as P from '@/lib/progress';
 
 export type LogSheetActivity = { id: string; name: string };
 
@@ -13,8 +14,13 @@ export type LogSheetProps = {
   activities: LogSheetActivity[];
   selectedActivityId: string | null;
   note: string;
+  /** YYYY-MM-DD the check-in is dated */
+  date: string;
+  /** today as YYYY-MM-DD; the latest date that can be picked */
+  maxDate: string;
   onSelectActivity: (id: string) => void;
   onNoteChange: (note: string) => void;
+  onDateChange: (date: string) => void;
   onSave: () => void;
   /** edit mode only */
   onRemove?: () => void;
@@ -23,8 +29,20 @@ export type LogSheetProps = {
   onClose: () => void;
 };
 
+/** Today, yesterday and the day before — the dates people actually backfill. */
+function quickDays(today: Date): { value: string; label: string }[] {
+  return [0, 1, 2].map((back) => {
+    const d = P.addDays(today, -back);
+    const label = back === 0 ? 'Today' : back === 1 ? 'Yesterday' : d.toLocaleDateString('en-GB', { weekday: 'long' });
+    return { value: P.toDateKey(d), label };
+  });
+}
+
 export function LogSheet(p: LogSheetProps) {
   const editing = p.mode === 'edit';
+  const days = quickDays(P.parseDay(p.maxDate));
+  // True when the chosen date is older than the three quick chips.
+  const isOther = !days.some((d) => d.value === p.date);
   return (
     <Sheet open={p.open} onClose={p.onClose} label={`Log ${p.habitName}`}>
       <div className="flex flex-col gap-[22px] px-5 pt-2.5 pb-[calc(22px+env(safe-area-inset-bottom))]">
@@ -58,6 +76,50 @@ export function LogSheet(p: LogSheetProps) {
             </div>
           </fieldset>
         )}
+
+        <fieldset className="flex flex-col gap-2.5">
+          <legend className="mb-2.5 text-[13px] font-medium text-ink-2">When?</legend>
+          <div className="flex flex-wrap items-center gap-2">
+            {days.map((d) => {
+              const on = d.value === p.date;
+              return (
+                <button
+                  key={d.value}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => p.onDateChange(d.value)}
+                  className={`h-11 rounded-full px-[18px] text-[15px] font-medium transition-colors duration-200 ${
+                    on ? 'bg-accent text-accent-contrast' : 'bg-surface-2 text-ink'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+
+            {/*
+              Older dates. The native date input is visually hidden rather than
+              styled: browsers do not allow restyling the picker itself, and its
+              mm/dd/yyyy text does not match the rest of the app. The label is
+              the visible control and opens the same picker.
+            */}
+            <label
+              className={`relative flex h-11 cursor-pointer items-center rounded-full px-[18px] text-[15px] font-medium transition-colors duration-200 ${
+                isOther ? 'bg-accent text-accent-contrast' : 'bg-surface-2 text-ink'
+              }`}
+            >
+              {isOther ? P.formatDay(P.parseDay(p.date)) : 'Another day'}
+              <input
+                type="date"
+                value={p.date}
+                max={p.maxDate}
+                aria-label="Choose another date"
+                onChange={(e) => e.target.value && p.onDateChange(e.target.value)}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </label>
+          </div>
+        </fieldset>
 
         <label className="flex flex-col gap-2.5">
           <span className="text-[13px] font-medium text-ink-2">Note <span className="font-normal text-ink-3">· optional</span></span>
