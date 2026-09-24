@@ -1,11 +1,11 @@
 'use client';
 
-import { ProgressRing } from './ProgressRing';
+import { CheckInDots } from './HabitCard';
 import { ProgressBar } from './ProgressBar';
 import { CheckInList, type CheckInGroup } from './CheckInList';
 import { SectionTitle } from './Controls';
 import { ChevronIcon } from './icons';
-import type { WeekTile } from './MonthHabitRows';
+import { MonthCalendar, type CalendarWeek } from './MonthHabitRows';
 
 export type HabitDetailScreenProps = {
   name: string;
@@ -15,8 +15,8 @@ export type HabitDetailScreenProps = {
   target: number;
   status: string;           // statusLine()
   done: boolean;
-  /** Rhythm: full history since the habit started, grouped by month (weekly) or year (monthly), newest group first */
-  rhythmAll: { label: string; summary: string; tiles: (WeekTile & { label: string })[] }[];
+  /** Rhythm: one month's dot calendar, stepped with the arrows */
+  rhythm: { label: string; summary: string; done: boolean; weeks: CalendarWeek[]; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void };
   rhythmAllSummary: string; // "On target 31 of 52 weeks since May 2026"
   mix: { name: string; count: number }[]; // check-ins by activity, desc
   goals: { id: string; title: string; progress: number; note: string; onOpen: () => void }[];
@@ -30,21 +30,9 @@ export type HabitDetailScreenProps = {
   onOpenLog: (logId: string) => void;
 };
 
-const tileClass: Record<WeekTile['state'], string> = {
-  hit: 'bg-accent text-accent-contrast',
-  current: 'bg-accent-soft border-[1.5px] border-accent text-ink',
-  miss: 'bg-surface-2 text-ink-2',
-  future: 'border border-dashed border-line text-ink-2',
-};
-
 export function HabitDetailScreen(p: HabitDetailScreenProps) {
   const max = Math.max(1, ...p.mix.map((m) => m.count));
-  const Tile = (t: WeekTile & { label: string }, i: number) => (
-    <div key={i} title={t.title} className={`flex flex-col items-start gap-1.5 rounded-sm px-3 pt-3 pb-2.5 ${tileClass[t.state]}`}>
-      <span className="flex items-baseline font-serif leading-none"><span className="text-[22px]">{t.count}</span><span className="text-sm opacity-70">/{p.target}</span></span>
-      <span className="text-xs font-medium whitespace-nowrap">{t.label}</span>
-    </div>
-  );
+  const navBtn = 'grid size-9 place-items-center rounded-full text-ink-2 transition-opacity hover:bg-surface-2 hover:text-ink disabled:pointer-events-none disabled:opacity-35';
   return (
     <section className="flex max-w-[760px] flex-col gap-5 animate-rise wide:gap-7">
       <div className="-mt-2 flex items-center justify-between gap-3">
@@ -58,11 +46,9 @@ export function HabitDetailScreen(p: HabitDetailScreenProps) {
       </header>
 
       <div className="flex flex-wrap items-center gap-[22px] rounded-lg bg-surface p-[22px] shadow-sm">
-        <ProgressRing value={p.count / p.target} size={96} stroke={7} label={`${p.count} of ${p.target}`}>
-          <span className="flex items-baseline font-serif"><span className="text-[34px] leading-none">{p.count}</span><span className="text-[17px] text-ink-3">/{p.target}</span></span>
-        </ProgressRing>
-        <div className="flex min-w-[180px] flex-1 flex-col gap-1">
+        <div className="flex min-w-[180px] flex-1 flex-col gap-2.5">
           <span className="text-[13px] font-medium text-ink-2">{p.periodLabel}</span>
+          <CheckInDots count={p.count} target={p.target} size="lg" />
           <span className={`text-[17px] leading-snug text-pretty ${p.done ? 'text-accent-ink' : 'text-ink'}`}>{p.status}</span>
         </div>
         <button type="button" onClick={p.onLog} className="h-12 rounded-full bg-accent px-[22px] text-[15px] font-medium text-accent-contrast hover:bg-accent-ink">Log check-in</button>
@@ -73,13 +59,16 @@ export function HabitDetailScreen(p: HabitDetailScreenProps) {
           <SectionTitle>Rhythm</SectionTitle>
           <span className="text-sm text-ink-2">{p.rhythmAllSummary}</span>
         </div>
-        <div className="flex flex-col gap-5 rounded-lg bg-surface p-[18px] shadow-sm">
-          {p.rhythmAll.map((g) => (
-            <div key={g.label} className="flex flex-col gap-2">
-              <div className="flex items-baseline justify-between gap-3 text-[13px]"><span className="font-medium">{g.label}</span><span className="text-ink-2">{g.summary}</span></div>
-              <div className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(108px,1fr))]">{g.tiles.map(Tile)}</div>
+        <div className="flex flex-col gap-4 rounded-lg bg-surface p-[18px] shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1">
+              <button type="button" aria-label="Previous month" onClick={p.rhythm.onPrev} disabled={!p.rhythm.canPrev} className={navBtn}><ChevronIcon size={12} /></button>
+              <span className="min-w-[124px] text-center text-[15px] font-medium">{p.rhythm.label}</span>
+              <button type="button" aria-label="Next month" onClick={p.rhythm.onNext} disabled={!p.rhythm.canNext} className={navBtn}><ChevronIcon dir="right" size={12} /></button>
             </div>
-          ))}
+            <span className={`shrink-0 text-sm ${p.rhythm.done ? 'text-accent-ink' : 'text-ink-2'}`}>{p.rhythm.summary}</span>
+          </div>
+          <MonthCalendar weeks={p.rhythm.weeks} />
         </div>
       </div>
 

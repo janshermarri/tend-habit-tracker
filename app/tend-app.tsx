@@ -70,6 +70,8 @@ export default function TendApp({ data }: { data: Dashboard }) {
   const [view, setView] = useState<'week' | 'month'>('week');
   const [monthOffset, setMonthOffset] = useState(0);
   const [habitId, setHabitId] = useState<string | null>(null);
+  // Rhythm month on the habit detail; tied to the habit so opening another starts on this month.
+  const [rhythmMonth, setRhythmMonth] = useState<{ habitId: string | null; offset: number }>({ habitId: null, offset: 0 });
   const [history, setHistory] = useState<{ filter: CheckInFilter; limit: number }>({ filter: 'all', limit: 40 });
   const openHistory = (filter: CheckInFilter) => { setHistory({ filter, limit: 40 }); setTab('checkins'); setGoalId(null); };
 
@@ -258,7 +260,23 @@ export default function TendApp({ data }: { data: Dashboard }) {
     return { months, total, remaining: Math.max(0, total - history.limit) };
   })();
 
-  /* Habit detail: current period, last 12 weeks / 6 months, activity mix, linked goals, recent check-ins. */
+  /** Monday-first dot calendar of one habit's month; weekly habits mark weeks that reached their target. */
+  function calendarWeeks(h: Habit, range: { start: Date; end: Date }) {
+    const today = P.startOfDay(now).getTime();
+    const ml = P.logsFor(logs, h.id, range);
+    return P.periodsBetween('week', range.start, range.end).map((w) => ({
+      days: Array.from({ length: 7 }, (_, i) => {
+        const d = P.addDays(w.start, i), t = d.getTime();
+        if (d < range.start || d >= range.end) return null;
+        const k = P.toDateKey(d);
+        return { count: ml.filter((l: Log) => P.toDateKey(l.logged_at) === k).length, isToday: t === today, isFuture: t > today, title: P.formatDay(d) };
+      }),
+      // The whole week counts, including days in the next or previous month.
+      hit: h.period === 'week' && w.start.getTime() <= today && P.logsFor(logs, h.id, w).length >= h.target,
+    }));
+  }
+
+  /* Habit detail: current period, a month of rhythm, activity mix, linked goals, recent check-ins. */
   const habitDetail = (() => {
     const h = habits.find((x) => x.id === habitId);
     if (!h) return null;
@@ -267,23 +285,25 @@ export default function TendApp({ data }: { data: Dashboard }) {
     const first = new Date(Math.min(+new Date(h.created_at), ...mine.map((l) => +new Date(l.logged_at))));
     const cur = P.periodRange(h.period, now);
     const all = P.periodsBetween(h.period, first, cur.end);
-    const groups = new Map<string, { label: string; summary: string; tiles: { count: number; state: 'hit' | 'miss' | 'current'; label: string; title: string }[] }>();
     let allHits = 0;
-    all.forEach((p) => {
-      const count = P.logsFor(logs, h.id, p).length;
-      const state = count >= h.target ? 'hit' as const : +p.start === +cur.start ? 'current' as const : 'miss' as const;
-      if (state === 'hit') allHits++;
-      const label = h.period === 'week' ? p.start.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : String(p.start.getFullYear());
-      const g = groups.get(label) ?? { label, summary: '', tiles: [] };
-      const pe = P.addDays(p.end, -1), mo = (d: Date) => d.toLocaleDateString('en-GB', { month: 'short' }).slice(0, 3);
-      const name = h.period === 'week'
-        ? (p.start.getMonth() === pe.getMonth() ? `${p.start.getDate()}–${pe.getDate()} ${mo(pe)}` : `${p.start.getDate()} ${mo(p.start)}–${pe.getDate()} ${mo(pe)}`)
-        : p.start.toLocaleDateString('en-GB', { month: 'long' });
-      const isCur = +p.start === +cur.start;
-      g.tiles.push({ count, state, label: isCur ? (h.period === 'week' ? 'This week' : 'This month') : name, title: `${name} · ${count} of ${h.target} check-ins` });
-      groups.set(label, g);
-    });
-    const rhythmAll = [...groups.values()].reverse().map((g) => ({ ...g, summary: `${g.tiles.filter((t) => t.state === 'hit').length} of ${g.tiles.length} ${h.period}s on target` }));
+    all.forEach((p) => { if (P.logsFor(logs, h.id, p).length >= h.target) allHits++; });
+    // Rhythm: one month at a time, from the habit's first month to this one.
+    const offset = rhythmMonth.habitId === h.id ? rhythmMonth.offset : 0;
+    const minOffset = (first.getFullYear() - now.getFullYear()) * 12 + first.getMonth() - now.getMonth();
+    const range = P.periodRange('month', new Date(now.getFullYear(), now.getMonth() + offset, 1));
+    const monthCount = P.logsFor(logs, h.id, range).length;
+    const monthDone = h.period === 'month' && monthCount >= h.target;
+    const rhythm = {
+      label: range.start.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+      summary: monthDone ? 'Done for the month'
+        : monthCount === 0 ? (offset === 0 ? 'Nothing yet this month' : 'A quiet month')
+        : `${monthCount} check-in${monthCount === 1 ? '' : 's'}`,
+      done: monthDone,
+      weeks: calendarWeeks(h, range),
+      canPrev: offset > minOffset, canNext: offset < 0,
+      onPrev: () => setRhythmMonth({ habitId: h.id, offset: offset - 1 }),
+      onNext: () => setRhythmMonth({ habitId: h.id, offset: offset + 1 }),
+    };
     const rhythmAllSummary = `On target ${allHits} of ${all.length} ${h.period}s since ${first.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`;
     const byAct = new Map<string, number>();
     mine.forEach((l) => { const n = activities.find((a) => a.id === l.activity_id)?.name ?? 'Check-in'; byAct.set(n, (byAct.get(n) ?? 0) + 1); });
@@ -291,7 +311,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
     return {
       name: h.name, targetLabel: `${h.target}× per ${h.period}`, periodLabel: h.period === 'week' ? 'This week' : 'This month',
       count: st.count, target: st.target, status: P.statusLine(st), done: st.done,
-      rhythmAll, rhythmAllSummary,
+      rhythm, rhythmAllSummary,
       mix: [...byAct.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count })),
       goals: goalKrs.flatMap((kr) => {
         const o = objectives.find((x) => x.id === kr.objective_id);
@@ -310,24 +330,12 @@ export default function TendApp({ data }: { data: Dashboard }) {
   /* Month view: one dot calendar per habit; weekly habits mark weeks that reached their target. */
   const monthVM = (() => {
     const range = P.periodRange('month', new Date(now.getFullYear(), now.getMonth() + monthOffset, 1));
-    const today = P.startOfDay(now).getTime();
-    // Monday-first rows covering the month; days outside it are blanks.
-    const rows = P.periodsBetween('week', range.start, range.end);
     const monthHabits = sorted
       // A habit only appears in months it existed (or has check-ins from).
       .filter((h) => Math.min(+new Date(h.created_at), ...logs.filter((l) => l.habit_id === h.id).map((l) => +new Date(l.logged_at))) < +range.end)
       .map((h) => {
-        const ml = P.logsFor(logs, h.id, range), count = ml.length;
-        const weeks = rows.map((w) => ({
-          days: Array.from({ length: 7 }, (_, i) => {
-            const d = P.addDays(w.start, i), t = d.getTime();
-            if (d < range.start || d >= range.end) return null;
-            const k = P.toDateKey(d);
-            return { count: ml.filter((l: Log) => P.toDateKey(l.logged_at) === k).length, isToday: t === today, isFuture: t > today, title: P.formatDay(d) };
-          }),
-          // The whole week counts, including days in the next or previous month.
-          hit: h.period === 'week' && w.start.getTime() <= today && P.logsFor(logs, h.id, w).length >= h.target,
-        }));
+        const count = P.logsFor(logs, h.id, range).length;
+        const weeks = calendarWeeks(h, range);
         const done = h.period === 'month' && count >= h.target;
         const summary = done ? 'Done for the month'
           : count === 0 ? (monthOffset === 0 ? 'Nothing yet this month' : 'A quiet month')

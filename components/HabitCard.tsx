@@ -22,16 +22,18 @@ export type HabitCardProps = {
  * Empty dots are room still open, not a gap; check-ins past the target
  * simply add more filled dots.
  */
-function CheckInDots({ count, target }: { count: number; target: number }) {
+export function CheckInDots({ count, target, size = 'md' }: { count: number; target: number; size?: 'md' | 'lg' }) {
   const total = Math.max(count, target);
   // Big monthly targets would make a long row; shrink and let it wrap instead.
   const dense = total > 7;
+  const dot = size === 'lg' ? (dense ? 'size-3.5' : 'size-[18px]') : dense ? 'size-2' : 'size-2.5';
+  const gap = size === 'lg' ? (dense ? 'gap-1.5' : 'gap-2') : dense ? 'gap-1' : 'gap-1.5';
   return (
-    <span role="img" aria-label={`${count} of ${target}`} className={`flex flex-wrap items-center ${dense ? 'gap-1' : 'gap-1.5'}`}>
+    <span role="img" aria-label={`${count} of ${target}`} className={`flex flex-wrap items-center ${gap}`}>
       {Array.from({ length: total }, (_, i) => (
         <span
           key={i}
-          className={`${dense ? 'size-2' : 'size-2.5'} rounded-full transition-colors duration-300 ease-calm ${i < count ? 'bg-accent' : 'border-[1.5px] border-accent/45'}`}
+          className={`${dot} rounded-full transition-colors duration-300 ease-calm ${i < count ? 'bg-accent' : 'border-[1.5px] border-accent/45'}`}
         />
       ))}
     </span>
