@@ -139,11 +139,14 @@ export default function TendApp({ data }: { data: Dashboard }) {
     if (!objForm) return;
     const { id, draft } = objForm;
     // Habit-linked KRs need a habit; fall back to the first one as the form does.
+    // Untitled ones take the habit's name — the save drops KRs with no title.
     const normalised = {
       ...draft,
-      key_results: draft.key_results.map((k) => (k.type === 'habit' && !k.habit_id
-        ? { ...k, habit_id: habits[0]?.id ?? null }
-        : k)),
+      key_results: draft.key_results.map((k) => {
+        if (k.type !== 'habit') return k;
+        const habit = habits.find((h) => h.id === k.habit_id) ?? habits[0];
+        return { ...k, habit_id: habit?.id ?? null, title: k.title.trim() || habit?.name || '' };
+      }),
     };
     run(null, () => A.saveObjective(id ?? null, normalised));
     setObjForm(null);

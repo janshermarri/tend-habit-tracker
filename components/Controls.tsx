@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { MinusIcon, PlusIcon } from './icons';
 
 /** Pill segmented control — used for period, timeframe and key-result type. */
@@ -29,16 +30,38 @@ export function Segmented<T extends string | number>({
   );
 }
 
-/** − value + stepper. */
+/** − value + stepper. The value is also typeable; it clamps to [min, max] as you type. */
 export function Stepper({
-  value, onChange, min = 0, max = 999, size = 'md', label,
-}: { value: number; onChange: (v: number) => void; min?: number; max?: number; size?: 'sm' | 'md'; label: string }) {
+  value, onChange, onStep, min = 0, max = 999, size = 'md', label,
+}: {
+  value: number; onChange: (v: number) => void;
+  /** Overrides what − and + do, for values that don't move in steps of one. */
+  onStep?: (dir: 1 | -1) => void;
+  min?: number; max?: number; size?: 'sm' | 'md'; label: string;
+}) {
   const btn = size === 'sm' ? 'size-9' : 'size-[42px]';
+  const step = (dir: 1 | -1) => (onStep ? onStep(dir) : onChange(Math.min(max, Math.max(min, value + dir))));
+  // Raw text while focused, so a half-typed value ("" or "1" on the way to "12") isn't clamped away.
+  const [text, setText] = useState<string | null>(null);
+  const clamp = (n: number) => Math.min(max, Math.max(min, n));
   return (
     <div className="flex items-center gap-0.5 rounded-full bg-surface-2 p-[3px]">
-      <button type="button" aria-label={`Fewer ${label}`} onClick={() => onChange(Math.max(min, value - 1))} className={`${btn} grid place-items-center rounded-full hover:bg-surface`}><MinusIcon /></button>
-      <span className={`min-w-[34px] text-center font-serif ${size === 'sm' ? 'text-[19px]' : 'text-2xl'}`}>{value}</span>
-      <button type="button" aria-label={`More ${label}`} onClick={() => onChange(Math.min(max, value + 1))} className={`${btn} grid place-items-center rounded-full hover:bg-surface`}><PlusIcon size={12} /></button>
+      <button type="button" aria-label={`Fewer ${label}`} onClick={() => step(-1)} className={`${btn} grid place-items-center rounded-full hover:bg-surface`}><MinusIcon /></button>
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label={label}
+        value={text ?? String(value)}
+        onFocus={(e) => { setText(String(value)); e.target.select(); }}
+        onChange={(e) => {
+          const raw = e.target.value.replace(/\D/g, '');
+          setText(raw);
+          if (raw) onChange(clamp(Number(raw)));
+        }}
+        onBlur={() => setText(null)}
+        className={`w-[3ch] min-w-[34px] bg-transparent text-center font-serif outline-none ${size === 'sm' ? 'text-[19px]' : 'text-2xl'}`}
+      />
+      <button type="button" aria-label={`More ${label}`} onClick={() => step(1)} className={`${btn} grid place-items-center rounded-full hover:bg-surface`}><PlusIcon size={12} /></button>
     </div>
   );
 }
