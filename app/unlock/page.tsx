@@ -15,8 +15,8 @@ export default async function UnlockPage({
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6">
       <div className="flex flex-col items-center gap-2">
-        <h1 className="flex items-center gap-2.5 font-serif text-3xl">
-          <span className="text-accent"><TendMark size={30} /></span>
+        <h1 className="flex items-baseline gap-2.5 font-serif text-3xl">
+          <span className="translate-y-[3px] text-accent"><TendMark size={30} /></span>
           Tend
         </h1>
         <p className="text-sm text-ink-2">Enter your PIN to continue</p>

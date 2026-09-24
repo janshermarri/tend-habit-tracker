@@ -45,8 +45,10 @@ type SideNavProps = BottomNavProps & { onToggleTheme?: () => void; themeLabel?: 
 export function SideNav({ active, onChange, onToggleTheme, themeLabel = 'Dark mode', themeIcon }: SideNavProps) {
   return (
     <aside className="sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col gap-9 border-r border-line px-5 pt-9 pb-7 wide:flex">
-      <div className="flex items-center gap-2.5 px-3">
-        <span className="text-accent"><TendMark size={24} /></span>
+      {/* Baseline, not centre: the sprout's stem sits on the word's baseline. The nudge
+          makes up for the empty space under the stem in the icon's 48-unit box. */}
+      <div className="flex items-baseline gap-2.5 px-3">
+        <span className="translate-y-[2px] text-accent"><TendMark size={24} /></span>
         <span className="font-serif text-2xl">Tend</span>
       </div>
       <nav className="flex flex-col gap-1">
