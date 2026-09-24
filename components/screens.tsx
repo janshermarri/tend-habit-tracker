@@ -31,7 +31,37 @@ export type TodayScreenProps = {
   suggestions: string[];
   onAddHabit: (suggestedName?: string) => void;
   headerAction?: React.ReactNode; // theme toggle on mobile
+  /** Up to three goals still in their timeframe. Empty hides the section — goals stay optional. */
+  goals: TodayGoalProps[];
+  /** How many more goals didn't fit; > 0 shows "All goals" */
+  moreGoals: number;
+  onAllGoals: () => void;
 };
+
+export type TodayGoalProps = {
+  id: string;
+  title: string;
+  timeLeft: string;  // "26 weeks left"
+  progress: number;  // 0..1, shown as a bar only
+  onOpen: () => void;
+};
+
+/** A goal on Today: a gentle sense of movement. No numbers, no pace, no prescribed next step. */
+function TodayGoal({ title, timeLeft, progress, onOpen }: Omit<TodayGoalProps, 'id'>) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex flex-col gap-2.5 rounded-lg bg-surface px-[18px] py-4 text-left shadow-sm transition duration-200 ease-calm animate-rise hover:shadow-md active:scale-[.99]"
+    >
+      <span className="flex items-baseline justify-between gap-3">
+        <span className="min-w-0 text-base font-medium text-pretty">{title}</span>
+        <span className="shrink-0 text-[13px] text-ink-2">{timeLeft}</span>
+      </span>
+      <ProgressBar value={progress} size="sm" label={`${title} progress`} />
+    </button>
+  );
+}
 
 export function TodayScreen(p: TodayScreenProps) {
   const empty = !p.weekly.length && !p.monthly.length;
@@ -79,6 +109,19 @@ export function TodayScreen(p: TodayScreenProps) {
         </EmptyState>
       ) : (
         <div className={grid}><AddTile label="Add a habit" onClick={() => p.onAddHabit()} /></div>
+      )}
+
+      {/* Below the habits: today is about what you can do; goals are the why. */}
+      {p.goals.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <SectionTitle>Working towards</SectionTitle>
+            {p.moreGoals > 0 && (
+              <button type="button" onClick={p.onAllGoals} className="flex h-9 items-center gap-2 px-1 text-sm font-medium text-accent-ink hover:text-ink">All goals <ChevronIcon dir="right" size={12} /></button>
+            )}
+          </div>
+          <div className={grid}>{p.goals.map(({ id, ...g }) => <TodayGoal key={id} {...g} />)}</div>
+        </div>
       )}
     </section>
   );

@@ -170,10 +170,20 @@ export default function TendApp({ data }: { data: Dashboard }) {
       : { draft: emptyObjectiveDraft() });
 
   /* ── view models ── */
+  // Goals still inside their timeframe. Finished ones step off Today rather
+  // than lingering as a reminder of what didn't happen.
+  const todayKey = P.toDateKey(now);
+  const activeGoals = objectives.filter((o) => o.end_date > todayKey).sort((a, b) => a.end_date.localeCompare(b.end_date));
+  // Habit → the goal it feeds, for the caption on its card.
+  const goalOfHabit = new Map<string, string>();
+  activeGoals.forEach((o) => keyResults.forEach((k) => {
+    if (k.objective_id === o.id && k.type === 'habit' && k.habit_id && !goalOfHabit.has(k.habit_id)) goalOfHabit.set(k.habit_id, o.title);
+  }));
+
   const habitVM = (h: Habit) => {
     const st = P.habitStats(h, logs, now);
     return {
-      id: h.id, name: h.name, count: st.count, target: st.target, done: st.done, status: P.statusLine(st),
+      id: h.id, name: h.name, count: st.count, target: st.target, done: st.done, status: P.statusLine(st), goal: goalOfHabit.get(h.id),
       // The card opens the habit; the + opens the log form.
       onLog: () => setSheet({ mode: 'create', habitId: h.id, activityId: P.lastActivityId(h.id, logs, activities), note: '', date: P.toDateKey(now) }),
       onOpen: () => setHabitId(h.id),
@@ -405,6 +415,15 @@ export default function TendApp({ data }: { data: Dashboard }) {
               weekly={weekly} monthly={monthly} suggestions={SUGGESTIONS}
               onAddHabit={(name) => openHabitForm(undefined, name)}
               headerAction={themeBtn}
+              goals={activeGoals.slice(0, 3).map((o) => {
+                const krs = keyResults.filter((k) => k.objective_id === o.id);
+                return {
+                  id: o.id, title: o.title, timeLeft: P.timeLeft(P.parseDay(o.end_date), now),
+                  progress: P.objectiveProgress(o, krs, ctx, now), onOpen: () => { setTab('goals'); setGoalId(o.id); },
+                };
+              })}
+              moreGoals={Math.max(0, activeGoals.length - 3)}
+              onAllGoals={() => { setTab('goals'); setGoalId(null); }}
             />
           )}
           {!habitDetail && tab === 'checkins' && historyVM && (

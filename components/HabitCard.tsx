@@ -10,13 +10,15 @@ export type HabitCardProps = {
   /** e.g. "2 of 3 done · 3 days left" — see statusLine() in lib/progress */
   status: string;
   done?: boolean;
+  /** The goal this habit feeds, if any — a quiet reminder of why it matters */
+  goal?: string;
   /** One-tap log with the last-used activity */
   onLog?: () => void;
   /** Open the LogSheet for this habit */
   onOpen?: () => void;
 };
 
-export function HabitCard({ name, count, target, status, done, onLog, onOpen }: HabitCardProps) {
+export function HabitCard({ name, count, target, status, done, goal, onLog, onOpen }: HabitCardProps) {
   return (
     <div
       role="button"
@@ -35,6 +37,7 @@ export function HabitCard({ name, count, target, status, done, onLog, onOpen }: 
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <span className="text-base font-medium">{name}</span>
         <span className={`text-sm leading-snug text-pretty ${done ? 'text-accent-ink' : 'text-ink-2'}`}>{status}</span>
+        {goal && <span className="truncate text-[13px] leading-snug text-ink-2">For {goal}</span>}
       </div>
 
       <button
