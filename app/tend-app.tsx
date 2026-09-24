@@ -183,7 +183,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
   const habitVM = (h: Habit) => {
     const st = P.habitStats(h, logs, now);
     return {
-      id: h.id, name: h.name, count: st.count, target: st.target, done: st.done, status: P.statusLine(st), goal: goalOfHabit.get(h.id),
+      id: h.id, name: h.name, count: st.count, target: st.target, done: st.done, status: P.statusNote(st), goal: goalOfHabit.get(h.id),
       // The card opens the habit; the + opens the log form.
       onLog: () => setSheet({ mode: 'create', habitId: h.id, activityId: P.lastActivityId(h.id, logs, activities), note: '', date: P.toDateKey(now) }),
       onOpen: () => setHabitId(h.id),

@@ -77,6 +77,14 @@ export function statusLine(st: HabitStats): string {
   return `${st.count} of ${st.target} done · ${left}`;
 }
 
+/** statusLine() without the count, for places where dots already show it: "4 days left". */
+export function statusNote(st: HabitStats): string {
+  const w = st.period;
+  if (st.count > st.target) return `A little extra this ${w}`;
+  if (st.done) return `Done for this ${w}`;
+  return st.left <= 1 ? `Last day of the ${w}` : `${st.left} days left`;
+}
+
 /** Default activity for one-tap logging: the last one used, else the first. */
 export function lastActivityId(habitId: string, logs: Log[], activities: Activity[]): string | null {
   const mine = logs
