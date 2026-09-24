@@ -12,7 +12,7 @@ import { CheckInList, type CheckInGroup } from './CheckInList';
 import { EmptyState } from './EmptyState';
 import { ProgressBar } from './ProgressBar';
 import { AddTile, Segmented, SectionTitle } from './Controls';
-import { MonthCalendarCard, WeekTilesRow, type CalendarDay, type WeekTile } from './MonthHabitRows';
+import { MonthCalendarCard, type MonthCalendarCardProps } from './MonthHabitRows';
 import { ChevronIcon } from './icons';
 
 const grid = 'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]';
@@ -130,8 +130,8 @@ export function TodayScreen(p: TodayScreenProps) {
 /* ── Progress (Week / Month) ───────────────────────────── */
 export type ProgressView = 'week' | 'month';
 export type MonthData = {
-  weekly: { id: string; name: string; target: number; tiles: WeekTile[]; onOpen?: () => void }[];
-  monthly: { id: string; name: string; count: number; target: number; status: string; done: boolean; days: CalendarDay[]; onOpen?: () => void }[];
+  /** Habits that existed during the month, weekly and monthly alike. */
+  habits: (MonthCalendarCardProps & { id: string })[];
   groups: CheckInGroup[];
 };
 export type WeekScreenProps = {
@@ -177,21 +177,12 @@ export function WeekScreen(p: WeekScreenProps) {
         />
       ) : p.view === 'month' ? (
         <>
-          {p.month.weekly.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <SectionTitle>Weekly habits</SectionTitle>
-              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr))]">
-                {p.month.weekly.map(({ id, ...r }) => <WeekTilesRow key={id} {...r} />)}
-              </div>
+          {p.month.habits.length > 0 ? (
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))]">
+              {p.month.habits.map(({ id, ...h }) => <MonthCalendarCard key={id} {...h} />)}
             </div>
-          )}
-          {p.month.monthly.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <SectionTitle>Monthly habits</SectionTitle>
-              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr))]">
-                {p.month.monthly.map(({ id, ...h }) => <MonthCalendarCard key={id} {...h} />)}
-              </div>
-            </div>
+          ) : (
+            <p className="text-[15px] text-ink-2">Your habits started after this month.</p>
           )}
           <div className="flex flex-col gap-3">
             <RecentHeader onSeeAll={p.onSeeAll} />

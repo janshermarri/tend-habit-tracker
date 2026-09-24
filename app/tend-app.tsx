@@ -307,37 +307,38 @@ export default function TendApp({ data }: { data: Dashboard }) {
     };
   })();
 
-  /* Month view: weekly habits → one tile per overlapping week; monthly habits → dot calendar. */
+  /* Month view: one dot calendar per habit; weekly habits mark weeks that reached their target. */
   const monthVM = (() => {
     const range = P.periodRange('month', new Date(now.getFullYear(), now.getMonth() + monthOffset, 1));
-    const y = range.start.getFullYear(), m = range.start.getMonth(), nDays = new Date(y, m + 1, 0).getDate();
-    const curWk = P.startOfWeek(now).getTime(), today = P.startOfDay(now).getTime();
-    const weeks = P.periodsBetween('week', range.start, range.end);
-    const weekly = sorted.filter((h) => h.period === 'week').map((h) => ({
-      id: h.id, name: h.name, target: h.target, onOpen: () => setHabitId(h.id),
-      tiles: weeks.map((w) => {
-        const count = P.logsFor(logs, h.id, w).length, t = w.start.getTime(), we = P.addDays(w.start, 6);
-        const state = t > curWk ? 'future' as const : count >= h.target ? 'hit' as const : t === curWk ? 'current' as const : 'miss' as const;
-        return { count, state, label: `${w.start.getDate()}–${we.getDate()}`, title: `${P.formatDay(w.start)} – ${P.formatDay(we)}` };
-      }),
-    }));
-    const lead = (range.start.getDay() + 6) % 7;
-    const monthly = sorted.filter((h) => h.period === 'month').map((h) => {
-      const ml = P.logsFor(logs, h.id, range), count = ml.length;
-      const days = [
-        ...Array.from({ length: lead }, () => null),
-        ...Array.from({ length: nDays }, (_, i) => {
-          const d = new Date(y, m, i + 1), k = P.toDateKey(d);
-          return { count: ml.filter((l: Log) => P.toDateKey(l.logged_at) === k).length, isToday: d.getTime() === today, isFuture: d.getTime() > today, title: P.formatDay(d) };
-        }),
-      ];
-      const status = monthOffset === 0 ? P.statusLine(P.habitStats(h, logs, now)) : count >= h.target ? `${count} of ${h.target} — done that month` : `${count} of ${h.target}`;
-      return { id: h.id, name: h.name, count, target: h.target, status, done: count >= h.target, days, onOpen: () => setHabitId(h.id) };
-    });
+    const today = P.startOfDay(now).getTime();
+    // Monday-first rows covering the month; days outside it are blanks.
+    const rows = P.periodsBetween('week', range.start, range.end);
+    const monthHabits = sorted
+      // A habit only appears in months it existed (or has check-ins from).
+      .filter((h) => Math.min(+new Date(h.created_at), ...logs.filter((l) => l.habit_id === h.id).map((l) => +new Date(l.logged_at))) < +range.end)
+      .map((h) => {
+        const ml = P.logsFor(logs, h.id, range), count = ml.length;
+        const weeks = rows.map((w) => ({
+          days: Array.from({ length: 7 }, (_, i) => {
+            const d = P.addDays(w.start, i), t = d.getTime();
+            if (d < range.start || d >= range.end) return null;
+            const k = P.toDateKey(d);
+            return { count: ml.filter((l: Log) => P.toDateKey(l.logged_at) === k).length, isToday: t === today, isFuture: t > today, title: P.formatDay(d) };
+          }),
+          // The whole week counts, including days in the next or previous month.
+          hit: h.period === 'week' && w.start.getTime() <= today && P.logsFor(logs, h.id, w).length >= h.target,
+        }));
+        const done = h.period === 'month' && count >= h.target;
+        const summary = done ? 'Done for the month'
+          : count === 0 ? (monthOffset === 0 ? 'Nothing yet this month' : 'A quiet month')
+          : monthOffset === 0 && h.period === 'month' ? `${count} so far`
+          : `${count} check-in${count === 1 ? '' : 's'}`;
+        return { id: h.id, name: h.name, summary, done, weeks, onOpen: () => setHabitId(h.id) };
+      });
     return {
       title: monthOffset === 0 ? 'This month' : monthOffset === -1 ? 'Last month' : range.start.toLocaleDateString('en-GB', { month: 'long' }),
       rangeLabel: range.start.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
-      data: { weekly, monthly, groups: previewGroups(groupByDay(range)) },
+      data: { habits: monthHabits, groups: previewGroups(groupByDay(range)) },
     };
   })();
 
