@@ -208,12 +208,15 @@ export default function TendApp({ data }: { data: Dashboard }) {
         const t = d.getTime();
         return { letter, count: inWeek.filter((l: Log) => P.startOfDay(l.logged_at).getTime() === t).length, isToday: t === today, isFuture: t > today };
       });
+      const monthCount = h.period === 'month' ? P.logsFor(logs, h.id, P.periodRange('month', ref)).length : 0;
       const countLabel = h.period === 'week'
         ? `${inWeek.length} of ${h.target}`
-        : `${inWeek.length} this week · ${P.logsFor(logs, h.id, P.periodRange('month', ref)).length} of ${h.target} this month`;
-      return { id: h.id, name: h.name, countLabel, days, onOpen: () => setHabitId(h.id) };
+        : `${inWeek.length} this week · ${monthCount} of ${h.target} this month`;
+      const hit = h.period === 'week' && inWeek.length >= h.target;
+      const done = hit || (h.period === 'month' && monthCount >= h.target);
+      return { id: h.id, name: h.name, countLabel, days, done, hit, onOpen: () => setHabitId(h.id) };
     });
-    return { rangeLabel: P.formatRange(range.start, P.addDays(range.end, -1)), title: weekOffset === 0 ? 'This week' : weekOffset === -1 ? 'Last week' : `${-weekOffset} weeks ago`, rows, groups: previewGroups(groupByDay(range)) };
+    return { range, rangeLabel: P.formatRange(range.start, P.addDays(range.end, -1)), title: weekOffset === 0 ? 'This week' : weekOffset === -1 ? 'Last week' : `${-weekOffset} weeks ago`, rows, groups: previewGroups(groupByDay(range)) };
   }, [weekOffset, logs, habits, activities]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function groupByDay(range: { start: Date; end: Date } | null, filter: CheckInFilter = 'all') {
@@ -346,9 +349,23 @@ export default function TendApp({ data }: { data: Dashboard }) {
     return {
       title: monthOffset === 0 ? 'This month' : monthOffset === -1 ? 'Last month' : range.start.toLocaleDateString('en-GB', { month: 'long' }),
       rangeLabel: range.start.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+      range,
       data: { habits: monthHabits, groups: previewGroups(groupByDay(range)) },
     };
   })();
+
+  /** Goals whose timeframe overlaps `range`, with progress as it stood at the end of it (or now, if sooner). */
+  const goalsDuring = (range: { start: Date; end: Date }) => {
+    const ref = new Date(Math.min(+now, +range.end - 1));
+    return objectives
+      .filter((o) => P.parseDay(o.start_date) < range.end && P.parseDay(o.end_date) > range.start)
+      .sort((a, b) => a.end_date.localeCompare(b.end_date))
+      .map((o) => ({
+        id: o.id, title: o.title, timeLeft: P.timeLeft(P.parseDay(o.end_date), ref),
+        progress: P.objectiveProgress(o, keyResults.filter((k) => k.objective_id === o.id), ctx, ref),
+        onOpen: () => { setTab('goals'); setGoalId(o.id); },
+      }));
+  };
 
   const krRow = (kr: KeyResult, o: Objective): KeyResultRowProps & { id: string } => {
     if (kr.type === 'milestone') return { id: kr.id, type: 'milestone', title: kr.title, done: kr.done, onToggle: () => updateKr(kr.id, { done: !kr.done }) };
@@ -454,6 +471,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               view={view}
               onViewChange={setView}
               month={monthVM.data}
+              goals={goalsDuring(view === 'month' ? monthVM.range : weekVM.range)}
               {...(view === 'month' ? { title: monthVM.title, rangeLabel: monthVM.rangeLabel } : {})}
               canGoNext={(view === 'month' ? monthOffset : weekOffset) < 0}
               onPrev={() => (view === 'month' ? setMonthOffset((x) => x - 1) : setWeekOffset((w) => w - 1))}

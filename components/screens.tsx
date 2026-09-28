@@ -42,12 +42,14 @@ export type TodayGoalProps = {
   id: string;
   title: string;
   timeLeft: string;  // "26 weeks left"
-  progress: number;  // 0..1, shown as a bar only
+  progress: number;  // 0..1
+  /** Show the percentage beside the time left (Progress screen). Today keeps it to the bar. */
+  showPct?: boolean;
   onOpen: () => void;
 };
 
 /** A goal on Today: a gentle sense of movement. No numbers, no pace, no prescribed next step. */
-function TodayGoal({ title, timeLeft, progress, onOpen }: Omit<TodayGoalProps, 'id'>) {
+function TodayGoal({ title, timeLeft, progress, showPct, onOpen }: Omit<TodayGoalProps, 'id'>) {
   return (
     <button
       type="button"
@@ -56,7 +58,10 @@ function TodayGoal({ title, timeLeft, progress, onOpen }: Omit<TodayGoalProps, '
     >
       <span className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 text-base font-medium text-pretty">{title}</span>
-        <span className="shrink-0 text-[13px] text-ink-2">{timeLeft}</span>
+        <span className="shrink-0 text-[13px] text-ink-2">
+          {showPct && <><span className="font-semibold text-ink">{Math.round(progress * 100)}%</span> · </>}
+          {timeLeft}
+        </span>
       </span>
       <ProgressBar value={progress} size="sm" label={`${title} progress`} />
     </button>
@@ -143,13 +148,25 @@ export type WeekScreenProps = {
   canGoNext: boolean;
   onPrev: () => void;
   onNext: () => void;
-  rows: { id: string; name: string; countLabel: string; days: WeekDay[]; onOpen?: () => void }[];
+  rows: { id: string; name: string; countLabel: string; days: WeekDay[]; done?: boolean; hit?: boolean; onOpen?: () => void }[];
+  /** Goals whose timeframe overlaps the week/month shown, with progress as of then. Empty hides the section. */
+  goals: TodayGoalProps[];
   groups: CheckInGroup[];
   onOpenLog: (logId: string) => void;
   /** "See all" → Check-ins page. `groups` / `month.groups` are a 3-item preview. */
   onSeeAll: () => void;
   onAddHabit: () => void;
 };
+
+function GoalsSection({ goals }: { goals: TodayGoalProps[] }) {
+  if (!goals.length) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>Goals</SectionTitle>
+      <div className={grid}>{goals.map(({ id, ...g }) => <TodayGoal key={id} {...g} showPct />)}</div>
+    </div>
+  );
+}
 
 export function WeekScreen(p: WeekScreenProps) {
   const navBtn = 'grid size-11 place-items-center rounded-full bg-surface shadow-sm transition-opacity';
@@ -184,6 +201,7 @@ export function WeekScreen(p: WeekScreenProps) {
           ) : (
             <p className="text-[15px] text-ink-2">Your habits started after this month.</p>
           )}
+          <GoalsSection goals={p.goals} />
           <div className="flex flex-col gap-3">
             <RecentHeader onSeeAll={p.onSeeAll} />
             <CheckInList groups={p.month.groups} onOpen={p.onOpenLog} emptyText="A quiet month so far — check-ins will show up here." />
@@ -194,6 +212,7 @@ export function WeekScreen(p: WeekScreenProps) {
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr))]">
             {p.rows.map(({ id, ...r }) => <WeekHabitRow key={id} {...r} />)}
           </div>
+          <GoalsSection goals={p.goals} />
           <div className="flex flex-col gap-3">
             <RecentHeader onSeeAll={p.onSeeAll} />
             <CheckInList groups={p.groups} onOpen={p.onOpenLog} emptyText="A quiet week so far — check-ins will show up here." />
