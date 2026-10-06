@@ -26,6 +26,7 @@ export type Log = {
 };
 
 export type Timeframe = 1 | 3 | 6;
+export type Area = 'career' | 'money' | 'self';
 
 export type Objective = {
   id: string;
@@ -33,10 +34,12 @@ export type Objective = {
   timeframe_months: Timeframe;
   start_date: string;      // YYYY-MM-DD
   end_date: string;        // YYYY-MM-DD (start + timeframe)
+  area: Area;
   created_at: string;
 };
 
-type KeyResultBase = { id: string; objective_id: string; title: string; sort_order: number };
+// source: null = updated by hand; 'hub:…' / 'ledger:…' = the hub fills current_value.
+type KeyResultBase = { id: string; objective_id: string; title: string; sort_order: number; source: string | null };
 
 export type MilestoneKeyResult = KeyResultBase & { type: 'milestone'; done: boolean };
 export type NumberKeyResult = KeyResultBase & { type: 'number'; current_value: number; target_value: number; unit: string | null };

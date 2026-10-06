@@ -8,7 +8,8 @@ export type PeriodCell = { state: 'hit' | 'miss' | 'current' | 'future'; title?:
 type Base = { title: string };
 
 export type MilestoneRowProps = Base & { type: 'milestone'; done: boolean; onToggle: () => void };
-export type NumberRowProps = Base & { type: 'number'; current: number; target: number; unit?: string | null; onChange: (next: number) => void };
+/** `source` set = the hub fills the value, so it shows read-only. */
+export type NumberRowProps = Base & { type: 'number'; current: number; target: number; unit?: string | null; source?: string | null; onChange: (next: number) => void };
 export type HabitRowProps = Base & {
   type: 'habit';
   habitName: string | null; // null if the linked habit was deleted
@@ -51,7 +52,7 @@ export function MilestoneRow({ title, done, onToggle }: MilestoneRowProps) {
   );
 }
 
-export function NumberRow({ title, current, target, unit, onChange }: NumberRowProps) {
+export function NumberRow({ title, current, target, unit, source, onChange }: NumberRowProps) {
   return (
     <div className="flex items-center gap-3.5 rounded-md bg-surface py-3.5 pr-3.5 pl-[18px] shadow-sm">
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
@@ -61,11 +62,18 @@ export function NumberRow({ title, current, target, unit, onChange }: NumberRowP
         </div>
         <ProgressBar value={current / target} size="sm" label={title} />
       </div>
-      <div className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface-2 p-0.5">
-        <button type="button" aria-label="Decrease" onClick={() => onChange(Math.max(0, current - 1))} className="grid size-10 place-items-center rounded-full hover:bg-surface"><MinusIcon /></button>
-        <span className="min-w-7 text-center font-serif text-xl">{current}</span>
-        <button type="button" aria-label="Increase" onClick={() => onChange(current + 1)} className="grid size-10 place-items-center rounded-full hover:bg-surface"><PlusIcon size={12} /></button>
-      </div>
+      {source ? (
+        <div className="flex shrink-0 flex-col items-end gap-0.5 pr-1">
+          <span className="font-serif text-xl">{current}</span>
+          <span className="text-xs text-ink-2">from hub</span>
+        </div>
+      ) : (
+        <div className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface-2 p-0.5">
+          <button type="button" aria-label="Decrease" onClick={() => onChange(Math.max(0, current - 1))} className="grid size-10 place-items-center rounded-full hover:bg-surface"><MinusIcon /></button>
+          <span className="min-w-7 text-center font-serif text-xl">{current}</span>
+          <button type="button" aria-label="Increase" onClick={() => onChange(current + 1)} className="grid size-10 place-items-center rounded-full hover:bg-surface"><PlusIcon size={12} /></button>
+        </div>
+      )}
     </div>
   );
 }

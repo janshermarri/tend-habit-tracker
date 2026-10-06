@@ -7,7 +7,9 @@ import { db } from './supabase/server';
 import { SESSION_COOKIE, SESSION_MAX_AGE, issueSession, isSessionValid, verifyPin } from './session';
 import { clear, registerAttempt } from './rate-limit';
 import type { HabitDraft, ObjectiveDraft } from './drafts';
+import type { Area } from './types';
 import type { UnlockState } from './unlock-state';
+import { insertLog, patchKeyResult, resolveLoggedAt } from './writes';
 import * as P from './progress';
 
 /**
@@ -71,35 +73,6 @@ export async function lock(): Promise<void> {
 
 /* ── logs ──────────────────────────────────────────────────────────────── */
 
-/**
- * Resolve a YYYY-MM-DD to a timestamp for storage.
- *
- * Today keeps the real clock time, so "logged at 19:00" stays accurate.
- * A past date gets midday: midnight would sit close enough to the boundary
- * that a timezone shift could move the log into the adjacent day, which would
- * silently put it in the wrong week.
- *
- * Future dates are rejected — a typo should not create a phantom entry that
- * distorts "days left" and period stats.
- */
-function resolveLoggedAt(date: string | null | undefined): string {
-  const now = new Date();
-  if (!date) return now.toISOString();
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('That date is not valid.');
-
-  const day = P.parseDay(date);
-  if (Number.isNaN(day.getTime())) throw new Error('That date is not valid.');
-
-  const today = P.startOfDay(now);
-  if (day.getTime() > today.getTime()) throw new Error('You can only log today or a past date.');
-  if (day.getTime() === today.getTime()) return now.toISOString();
-
-  const midday = new Date(day);
-  midday.setHours(12, 0, 0, 0);
-  return midday.toISOString();
-}
-
 export async function addLog(
   habitId: string,
   activityId: string | null,
@@ -107,14 +80,9 @@ export async function addLog(
   date?: string | null,
 ): Promise<string> {
   await requireSession();
-  const { data, error } = await db()
-    .from('logs')
-    .insert({ habit_id: habitId, activity_id: activityId, note, logged_at: resolveLoggedAt(date) })
-    .select('id')
-    .single();
-  if (error) throw new Error(error.message);
+  const log = await insertLog(habitId, activityId, note, date);
   refresh();
-  return data.id as string;
+  return log.id;
 }
 
 export async function updateLog(
@@ -217,11 +185,14 @@ export async function deleteHabit(id: string): Promise<void> {
 
 /* ── objectives ────────────────────────────────────────────────────────── */
 
+const AREAS: Area[] = ['career', 'money', 'self'];
+
 export async function saveObjective(id: string | null, draft: ObjectiveDraft): Promise<void> {
   await requireSession();
   const supabase = db();
   const title = draft.title.trim();
   if (!title) throw new Error('A goal needs a title.');
+  if (!AREAS.includes(draft.area)) throw new Error('Pick Career, Money or Self.');
 
   // Preserve the original start date when editing so the timeframe does not shift.
   let start = P.startOfDay(new Date());
@@ -233,6 +204,7 @@ export async function saveObjective(id: string | null, draft: ObjectiveDraft): P
   const row = {
     title,
     timeframe_months: draft.timeframe_months,
+    area: draft.area,
     start_date: P.toDateKey(start),
     end_date: P.toDateKey(P.addMonths(start, draft.timeframe_months)),
   };
@@ -296,7 +268,6 @@ export async function updateKeyResult(
   patch: { done?: boolean; current_value?: number },
 ): Promise<void> {
   await requireSession();
-  const { error } = await db().from('key_results').update(patch).eq('id', id);
-  if (error) throw new Error(error.message);
+  await patchKeyResult(id, patch);
   refresh();
 }

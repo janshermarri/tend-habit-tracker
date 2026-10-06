@@ -29,7 +29,7 @@ function sign(payload: string): string {
 }
 
 /** Constant-time string compare that tolerates length mismatch. */
-function safeEqual(a: string, b: string): boolean {
+export function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a, 'utf8');
   const bb = Buffer.from(b, 'utf8');
   if (ab.length !== bb.length) {

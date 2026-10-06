@@ -168,7 +168,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
       : { draft: { ...emptyHabitDraft, name: suggested ?? '' } });
   const openObjForm = (o?: Objective) =>
     setObjForm(o
-      ? { id: o.id, draft: { title: o.title, timeframe_months: o.timeframe_months, key_results: keyResults.filter((k) => k.objective_id === o.id).sort((a, b) => a.sort_order - b.sort_order).map((k) => ({ ...emptyKeyResult(k.type), ...k, unit: k.type === 'number' ? k.unit ?? '' : '' })) } }
+      ? { id: o.id, draft: { title: o.title, timeframe_months: o.timeframe_months, area: o.area, key_results: keyResults.filter((k) => k.objective_id === o.id).sort((a, b) => a.sort_order - b.sort_order).map((k) => ({ ...emptyKeyResult(k.type), ...k, unit: k.type === 'number' ? k.unit ?? '' : '' })) } }
       : { draft: emptyObjectiveDraft() });
 
   /* ── view models ── */
@@ -369,7 +369,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
 
   const krRow = (kr: KeyResult, o: Objective): KeyResultRowProps & { id: string } => {
     if (kr.type === 'milestone') return { id: kr.id, type: 'milestone', title: kr.title, done: kr.done, onToggle: () => updateKr(kr.id, { done: !kr.done }) };
-    if (kr.type === 'number') return { id: kr.id, type: 'number', title: kr.title, current: kr.current_value, target: kr.target_value, unit: kr.unit, onChange: (v) => updateKr(kr.id, { current_value: v }) };
+    if (kr.type === 'number') return { id: kr.id, type: 'number', title: kr.title, current: kr.current_value, target: kr.target_value, unit: kr.unit, source: kr.source, onChange: (v) => updateKr(kr.id, { current_value: v }) };
     const pr = P.keyResultProgress(kr, o, ctx, now);
     const h = pr.habit ?? null;
     return {
@@ -486,7 +486,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               objectives={objectives.map((o) => {
                 const krs = keyResults.filter((k) => k.objective_id === o.id);
                 return {
-                  id: o.id, title: o.title, timeframeLabel: tfLabel(o.timeframe_months), timeLeftLabel: P.timeLeft(P.parseDay(o.end_date), now),
+                  id: o.id, area: o.area, title: o.title, timeframeLabel: tfLabel(o.timeframe_months), timeLeftLabel: P.timeLeft(P.parseDay(o.end_date), now),
                   progress: P.objectiveProgress(o, krs, ctx, now), keyResultCount: krs.length, onOpen: () => setGoalId(o.id),
                 };
               })}

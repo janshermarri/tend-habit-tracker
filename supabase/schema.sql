@@ -35,6 +35,7 @@ create table if not exists objectives (
   timeframe_months int  not null check (timeframe_months in (1,3,6)),
   start_date       date not null,
   end_date         date not null,
+  area             text not null default 'self' check (area in ('career','money','self')),
   created_at       timestamptz not null default now()
 );
 
@@ -50,6 +51,8 @@ create table if not exists key_results (
   unit           text,
   habit_id       uuid references habits(id) on delete set null,
   target_periods int,
+  -- null = updated by hand; e.g. 'hub:organic_orders' = the hub fills current_value.
+  source         text,
   -- Each KR type owns a disjoint set of columns; keep the rows honest.
   constraint key_results_shape check (
     case type

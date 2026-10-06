@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Sheet } from './Sheet';
 import { AddTile, FieldLabel, FormHeader, Segmented, Stepper, inputClass } from './Controls';
 import { CloseIcon } from './icons';
-import type { KeyResultType, Period, Timeframe } from '@/lib/types';
+import type { Area, KeyResultType, Period, Timeframe } from '@/lib/types';
 
 import { emptyKeyResult, emptyObjectiveDraft, type KeyResultDraft, type ObjectiveDraft } from '@/lib/drafts';
 
@@ -61,6 +61,15 @@ export function ObjectiveForm(p: ObjectiveFormProps) {
         </label>
 
         <div className="flex flex-col gap-3">
+          <FieldLabel>Area</FieldLabel>
+          <Segmented<Area>
+            options={[{ value: 'career', label: 'Career' }, { value: 'money', label: 'Money' }, { value: 'self', label: 'Self' }]}
+            value={draft.area}
+            onChange={(area) => set({ area })}
+          />
+        </div>
+
+        <div className="flex flex-col gap-3">
           <FieldLabel>Timeframe</FieldLabel>
           <Segmented<Timeframe>
             options={[{ value: 1, label: '1 month' }, { value: 3, label: '3 months' }, { value: 6, label: '6 months' }]}
@@ -92,7 +101,11 @@ export function ObjectiveForm(p: ObjectiveFormProps) {
                 {k.type === 'number' && (
                   <div className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
                     <span>At</span>
-                    <input type="number" inputMode="numeric" value={k.current_value} onChange={(e) => setKr(i, { current_value: Number(e.target.value) || 0 })} className="h-[42px] w-[68px] rounded-sm bg-surface px-2.5 text-center text-base text-ink outline-none focus:ring-2 focus:ring-accent" />
+                    {k.source ? (
+                      <span title="Filled in by the hub" className="px-1 text-base text-ink">{k.current_value} <span className="text-xs text-ink-2">from hub</span></span>
+                    ) : (
+                      <input type="number" inputMode="numeric" value={k.current_value} onChange={(e) => setKr(i, { current_value: Number(e.target.value) || 0 })} className="h-[42px] w-[68px] rounded-sm bg-surface px-2.5 text-center text-base text-ink outline-none focus:ring-2 focus:ring-accent" />
+                    )}
                     <span>of</span>
                     <input type="number" inputMode="numeric" value={k.target_value} onChange={(e) => setKr(i, { target_value: Math.max(1, Number(e.target.value) || 1) })} className="h-[42px] w-[68px] rounded-sm bg-surface px-2.5 text-center text-base text-ink outline-none focus:ring-2 focus:ring-accent" />
                     <input value={k.unit} onChange={(e) => setKr(i, { unit: e.target.value })} placeholder="unit, e.g. projects" className="h-[42px] min-w-[120px] flex-1 rounded-sm bg-surface px-3 text-base text-ink outline-none focus:ring-2 focus:ring-accent" />

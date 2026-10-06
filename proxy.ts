@@ -30,6 +30,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except static assets, the manifest and the favicon.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // Everything except static assets, the manifest, the favicon and /api/hub
+  // (bearer token, checked in each route handler).
+  matcher: ['/((?!api/hub/|_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };

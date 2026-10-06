@@ -14,6 +14,7 @@ import { ProgressBar } from './ProgressBar';
 import { AddTile, Segmented, SectionTitle } from './Controls';
 import { MonthCalendarCard, type MonthCalendarCardProps } from './MonthHabitRows';
 import { ChevronIcon } from './icons';
+import type { Area } from '@/lib/types';
 
 const grid = 'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]';
 const h1 = 'font-serif text-[clamp(30px,8vw,38px)] leading-[1.08] font-normal tracking-[-.015em]';
@@ -296,9 +297,16 @@ export function CheckInsScreen(p: CheckInsScreenProps) {
 /* ── Goals ─────────────────────────────────────────────── */
 export type GoalsScreenProps = {
   sub: string; // "3 objectives in motion"
-  objectives: (ObjectiveCardProps & { id: string })[];
+  objectives: (ObjectiveCardProps & { id: string; area: Area })[];
   onAddObjective: () => void;
 };
+
+const AREAS: { value: Area; label: string }[] = [
+  { value: 'career', label: 'Career' },
+  { value: 'money', label: 'Money' },
+  { value: 'self', label: 'Self' },
+];
+const goalGrid = 'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))]';
 
 export function GoalsScreen(p: GoalsScreenProps) {
   return (
@@ -321,10 +329,22 @@ export function GoalsScreen(p: GoalsScreenProps) {
           onAction={p.onAddObjective}
         />
       ) : (
-        <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))]">
-          {p.objectives.map(({ id, ...o }) => <ObjectiveCard key={id} {...o} />)}
-          <AddTile label="New objective" onClick={p.onAddObjective} className="min-h-[120px]" />
-        </div>
+        <>
+          {AREAS.map(({ value, label }) => {
+            const group = p.objectives.filter((o) => o.area === value);
+            return group.length > 0 && (
+              <div key={value} className="flex flex-col gap-3">
+                <SectionTitle>{label}</SectionTitle>
+                <div className={goalGrid}>
+                  {group.map((o) => <ObjectiveCard key={o.id} {...o} />)}
+                </div>
+              </div>
+            );
+          })}
+          <div className={goalGrid}>
+            <AddTile label="New objective" onClick={p.onAddObjective} className="min-h-[120px]" />
+          </div>
+        </>
       )}
     </section>
   );
