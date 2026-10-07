@@ -23,8 +23,14 @@ export const badRequest = (error: string) => Response.json({ error }, { status: 
 export async function hubDashboard(now = new Date()) {
   const { habits, logs, objectives, keyResults } = await getDashboard();
   const ctx = { habits, logs };
+  // Last 7 days of completions, so a "what did I do today / this week" question needs no second call.
+  const since = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+  const habitName = new Map(habits.map((h) => [h.id, h.name]));
   return {
     habits: habits.map((h) => ({ ...h, stats: P.habitStats(h, logs, now) })),
+    recentLogs: logs
+      .filter((l) => l.logged_at >= since)
+      .map((l) => ({ habit: habitName.get(l.habit_id) ?? l.habit_id, at: l.logged_at, note: l.note ?? null })),
     objectives: objectives.map((o) => {
       const krs = keyResults.filter((k) => k.objective_id === o.id);
       return {
