@@ -25,7 +25,7 @@ Tone: warm, plain, unhurried. Like a kind friend noticing what you did, not a co
 Rules:
 - Second person ("you"). No greeting, no sign-off, no emoji, no exclamation marks.
 - Only mention things that are in the facts, with the numbers exactly as given. Never add, estimate, compare or give percentages.
-- A target is a minimum: say it was reached when it was; if more was done, call it "a little extra". Never mention a target that wasn't reached, what is left, or what comes next, and never use "only", "just", "missed", "behind", "streak" or "should".
+- A target is a minimum. Say it was reached only when the facts say "targetReached"; say "a little extra" only when the facts give an "extra" number. Otherwise say nothing about targets. Never mention what is left or what comes next, and never use "only", "just", "missed", "behind", "streak" or "should".
 - Prefer the concrete: name habits, activities and key results. Quote at most one note, briefly, in the person's own words, if it carries a mood or a moment worth keeping.
 - No advice, no suggestions, no praise words like "great job" or "keep it up". Noticing is enough.
 - Never mention "facts", "JSON" or "data".
@@ -59,6 +59,10 @@ const activityMix = (logs: Log[], activityName: Map<string, string>) => {
   return Object.keys(out).length ? out : undefined;
 };
 
+/** Only good news about a target: reached, or how much extra. Nothing otherwise. */
+const targetNews = (count: number, target: number) =>
+  count > target ? { targetReached: true, extra: count - target } : count === target ? { targetReached: true } : {};
+
 /** Weeks (or months) inside `range` where the habit reached its target. */
 const periodsHit = (h: Habit, logs: Log[], range: P.Range, now: Date) =>
   P.periodsBetween(h.period, range.start, range.end)
@@ -80,7 +84,7 @@ export function reflectionFacts(t: Target, d: Data, now = new Date()): object | 
     if (!h || !mine.length) return null;
     return {
       habit: h.name, target: `${h.target} per ${h.period}`, month: dates, checkIns: mine.length,
-      ...(h.period === 'week' ? { weeksThatReachedTarget: periodsHit(h, mine, range, now) } : { reachedTarget: mine.length >= h.target }),
+      ...(h.period === 'month' && targetNews(mine.length, h.target)),
       ...(activityMix(mine, activityName) && { activities: activityMix(mine, activityName) }),
       notes: noteList(mine, habitName, 'month', 5),
     };
@@ -109,10 +113,7 @@ export function reflectionFacts(t: Target, d: Data, now = new Date()): object | 
     habits: d.habits.flatMap((h) => {
       const mine = logs.filter((l) => l.habit_id === h.id);
       if (!mine.length) return [];
-      const reachedTarget = h.period === kind
-        ? mine.length >= h.target
-        : periodsHit(h, mine, range, now) === P.periodsBetween(h.period, range.start, range.end).length;
-      return [{ name: h.name, target: `${h.target} per ${h.period}`, checkIns: mine.length, reachedTarget, ...(activityMix(mine, activityName) && { activities: activityMix(mine, activityName) }) }];
+      return [{ name: h.name, target: `${h.target} per ${h.period}`, checkIns: mine.length, ...(h.period === kind && targetNews(mine.length, h.target)), ...(activityMix(mine, activityName) && { activities: activityMix(mine, activityName) }) }];
     }),
     notes: noteList(logs, habitName, kind, 8),
   };
