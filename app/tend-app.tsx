@@ -474,6 +474,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               onViewChange={setView}
               month={monthVM.data}
               goals={goalsDuring(view === 'month' ? monthVM.range : weekVM.range)}
+              reflection={reflections.find((r) => r.kind === view && r.period_start === P.toDateKey((view === 'month' ? monthVM.range : weekVM.range).start))?.text ?? null}
               {...(view === 'month' ? { title: monthVM.title, rangeLabel: monthVM.rangeLabel } : {})}
               canGoNext={(view === 'month' ? monthOffset : weekOffset) < 0}
               onPrev={() => (view === 'month' ? setMonthOffset((x) => x - 1) : setWeekOffset((w) => w - 1))}

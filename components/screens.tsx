@@ -16,6 +16,16 @@ import { MonthCalendarCard, type MonthCalendarCardProps } from './MonthHabitRows
 import { ChevronIcon } from './icons';
 import type { Area } from '@/lib/types';
 
+/** The AI "Looking back" note: a few sentences about a finished week or month, what was done only. */
+function ReflectionCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-accent-soft px-[18px] py-4 animate-rise">
+      <SectionTitle>Looking back · {title}</SectionTitle>
+      <p className="font-serif text-[17px] leading-relaxed text-pretty">{text}</p>
+    </div>
+  );
+}
+
 const grid = 'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]';
 const h1 = 'font-serif text-[clamp(30px,8vw,38px)] leading-[1.08] font-normal tracking-[-.015em]';
 
@@ -86,13 +96,7 @@ export function TodayScreen(p: TodayScreenProps) {
         {p.headerAction}
       </header>
 
-      {/* A few sentences about the week or month that just ended — what was done, nothing else. */}
-      {p.reflection && !empty && (
-        <div className="flex flex-col gap-2 rounded-lg bg-accent-soft px-[18px] py-4 animate-rise">
-          <SectionTitle>Looking back · {p.reflection.title}</SectionTitle>
-          <p className="font-serif text-[17px] leading-relaxed text-pretty">{p.reflection.text}</p>
-        </div>
-      )}
+      {p.reflection && !empty && <ReflectionCard {...p.reflection} />}
 
       {p.weekly.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -155,6 +159,8 @@ export type WeekScreenProps = {
   onViewChange: (v: ProgressView) => void;
   month: MonthData;
   rangeLabel: string;   // "21 – 27 September" | "September 2026"
+  /** The AI note for the week or month being viewed, once it has ended and been written. */
+  reflection: string | null;
   title: string;        // "This week" | "Last week" | "This month" | "July"
   canGoNext: boolean;
   onPrev: () => void;
@@ -194,6 +200,8 @@ export function WeekScreen(p: WeekScreenProps) {
           <button type="button" aria-label={`Next ${p.view}`} onClick={p.onNext} disabled={!p.canGoNext} className={`${navBtn} disabled:pointer-events-none disabled:opacity-35`}><ChevronIcon dir="right" /></button>
         </div>
       </header>
+
+      {p.reflection && p.rows.length > 0 && <ReflectionCard title={p.view === 'month' ? p.title : p.rangeLabel} text={p.reflection} />}
 
       {p.rows.length === 0 ? (
         <EmptyState

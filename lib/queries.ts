@@ -9,7 +9,7 @@ export type Dashboard = {
   logs: Log[];
   objectives: Objective[];
   keyResults: KeyResult[];
-  /** Latest "Looking back" notes; Today picks the one for right now. */
+  /** "Looking back" notes, newest first; Today and Progress pick by period. */
   reflections: Reflection[];
   /** False when no AI key is set — the AI touches stay hidden. */
   ai: boolean;
@@ -32,7 +32,7 @@ export async function getDashboard(): Promise<Dashboard> {
     supabase.from('logs').select('*').order('logged_at', { ascending: false }).limit(2000),
     supabase.from('objectives').select('*').order('created_at'),
     supabase.from('key_results').select('*').order('sort_order'),
-    supabase.from('reflections').select('*').order('period_start', { ascending: false }).limit(4),
+    supabase.from('reflections').select('*').order('period_start', { ascending: false }).limit(60),
   ]);
 
   for (const r of [habits, activities, logs, objectives, keyResults, reflections]) {
