@@ -522,7 +522,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
       <BottomNav active={tab} onChange={(t) => { setTab(t); setGoalId(null); setHabitId(null); setHistory({ filter: 'all', limit: 40 }); }} />
 
       {error && !toast && (
-        <Toast text={error} onUndo={() => setError(null)} />
+        <Toast text={error} onDismiss={() => setError(null)} />
       )}
 
       {toast && (

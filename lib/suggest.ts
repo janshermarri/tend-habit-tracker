@@ -1,5 +1,5 @@
 import 'server-only';
-import { complete } from './ai';
+import { complete, parseJsonObject } from './ai';
 import { emptyKeyResult, type KeyResultDraft } from './drafts';
 import type { Area, Habit, Timeframe } from './types';
 
@@ -38,8 +38,7 @@ export async function suggestKeyResults(
   });
   const { text } = await complete(SYSTEM, user, { json: true });
 
-  let parsed: { key_results?: unknown };
-  try { parsed = JSON.parse(text); } catch { throw new Error('The suggestion came back unreadable. Try again.'); }
+  const parsed = parseJsonObject(text) ?? {};
   const items = Array.isArray(parsed.key_results) ? parsed.key_results : [];
 
   const out: KeyResultDraft[] = [];
@@ -60,6 +59,9 @@ export async function suggestKeyResults(
       out.push({ ...emptyKeyResult('habit'), title: title || habit.name, habit_id: habit.id, target_periods: periods });
     }
   }
-  if (!out.length) throw new Error('No usable suggestions this time. Try again.');
+  if (!out.length) {
+    console.warn('[suggest] nothing usable in:', text.slice(0, 500));
+    throw new Error('No usable suggestions this time. Try again.');
+  }
   return out;
 }
