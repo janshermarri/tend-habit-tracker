@@ -2,13 +2,13 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { isHubRequest, unauthorized } from '@/lib/hub';
 import { SESSION_COOKIE, isSessionValid, safeEqual } from '@/lib/session';
-import { ensureReflection } from '@/lib/reflect';
+import { ensureReflections } from '@/lib/reflect';
 
 /**
- * Writes the "Looking back" note for last week, and for last month during the
- * first days of a month. Vercel Cron calls it daily (see vercel.json); it is
- * idempotent, so a day whose note already exists is a no-op. Also reachable
- * with the hub token or a PIN session, for a manual run.
+ * Writes every missing "Looking back" note — the whole week or month, each
+ * habit's month, each goal's month — newest first. Vercel Cron calls it daily
+ * (see vercel.json); notes that exist are left alone, so a normal day writes
+ * one or two. Also reachable with the hub token or a PIN session, for a manual run.
  */
 async function allowed(request: Request): Promise<boolean> {
   const secret = process.env.CRON_SECRET;
@@ -21,14 +21,12 @@ async function allowed(request: Request): Promise<boolean> {
 
 export async function GET(request: Request) {
   if (!(await allowed(request))) return unauthorized();
-  const now = new Date();
-  const results: Record<string, string | null> = {};
   try {
-    results.week = (await ensureReflection('week', now))?.text ?? null;
-    if (now.getDate() <= 3) results.month = (await ensureReflection('month', now))?.text ?? null;
+    const result = await ensureReflections(new Date());
+    revalidatePath('/');
+    return Response.json(result);
   } catch (e) {
-    return Response.json({ error: (e as Error).message, ...results }, { status: 502 });
+    revalidatePath('/');
+    return Response.json({ error: (e as Error).message }, { status: 502 });
   }
-  revalidatePath('/');
-  return Response.json(results);
 }

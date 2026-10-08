@@ -14,17 +14,8 @@ import { ProgressBar } from './ProgressBar';
 import { AddTile, Segmented, SectionTitle } from './Controls';
 import { MonthCalendarCard, type MonthCalendarCardProps } from './MonthHabitRows';
 import { ChevronIcon } from './icons';
+import { ReflectionCard } from './ReflectionCard';
 import type { Area } from '@/lib/types';
-
-/** The AI "Looking back" note: a few sentences about a finished week or month, what was done only. */
-function ReflectionCard({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="flex flex-col gap-2 rounded-lg bg-accent-soft px-[18px] py-4 animate-rise">
-      <SectionTitle>Looking back · {title}</SectionTitle>
-      <p className="font-serif text-[17px] leading-relaxed text-pretty">{text}</p>
-    </div>
-  );
-}
 
 const grid = 'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]';
 const h1 = 'font-serif text-[clamp(30px,8vw,38px)] leading-[1.08] font-normal tracking-[-.015em]';
@@ -373,6 +364,8 @@ export type GoalDetailScreenProps = {
   title: string;
   timeframeLabel: string;  // "3 months"
   rangeLabel: string;      // "14 Jul – 14 Oct"
+  /** This goal's note for the last finished month, if there was something to say. */
+  reflection: { title: string; text: string } | null;
   timeLeftLabel: string;   // "3 weeks left"
   positionLabel: string;   // "Week 10 of 13"
   progress: number;        // 0..1
@@ -409,6 +402,7 @@ export function GoalDetailScreen(p: GoalDetailScreenProps) {
         <ProgressBar value={p.progress} size="lg" label="Objective progress" />
         <p className="text-[13px] text-ink-2">Average of {p.keyResults.length} key result{p.keyResults.length === 1 ? '' : 's'}</p>
       </div>
+      {p.reflection && <ReflectionCard plain {...p.reflection} />}
 
       <div className="flex flex-col gap-3">
         <SectionTitle>Key results</SectionTitle>

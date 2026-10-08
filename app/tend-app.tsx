@@ -305,6 +305,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
       done: monthDone,
       weeks: calendarWeeks(h, range),
       canPrev: offset > minOffset, canNext: offset < 0,
+      reflection: reflections.find((r) => r.kind === 'month' && r.subject === `habit:${h.id}` && r.period_start === P.toDateKey(range.start))?.text ?? null,
       onPrev: () => setRhythmMonth({ habitId: h.id, offset: offset - 1 }),
       onNext: () => setRhythmMonth({ habitId: h.id, offset: offset + 1 }),
     };
@@ -474,7 +475,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               onViewChange={setView}
               month={monthVM.data}
               goals={goalsDuring(view === 'month' ? monthVM.range : weekVM.range)}
-              reflection={reflections.find((r) => r.kind === view && r.period_start === P.toDateKey((view === 'month' ? monthVM.range : weekVM.range).start))?.text ?? null}
+              reflection={reflections.find((r) => r.kind === view && r.subject === '' && r.period_start === P.toDateKey((view === 'month' ? monthVM.range : weekVM.range).start))?.text ?? null}
               {...(view === 'month' ? { title: monthVM.title, rangeLabel: monthVM.rangeLabel } : {})}
               canGoNext={(view === 'month' ? monthOffset : weekOffset) < 0}
               onPrev={() => (view === 'month' ? setMonthOffset((x) => x - 1) : setWeekOffset((w) => w - 1))}
@@ -507,6 +508,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
                 title={goal.title} timeframeLabel={tfLabel(goal.timeframe_months)}
                 rangeLabel={`${P.formatDay(start)} – ${P.formatDay(end)}`}
                 timeLeftLabel={P.timeLeft(end, now)} positionLabel={`Week ${wk} of ${weeks}`}
+                reflection={(() => { const r = reflections.find((x) => x.kind === 'month' && x.subject === `objective:${goal.id}`); return r ? { title: P.parseDay(r.period_start).toLocaleDateString('en-GB', { month: 'long' }), text: r.text } : null; })()}
                 progress={P.objectiveProgress(goal, krs, ctx, now)}
                 keyResults={krs.map((k) => krRow(k, goal))}
                 linkedHabits={habits.filter((h) => linkedIds.includes(h.id)).map(habitVM)}

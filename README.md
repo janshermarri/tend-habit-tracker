@@ -58,11 +58,13 @@ Components and Server Actions using the secret key, which stays on the server
 Two small touches, both through the same provider chain as the expense tracker
 (Azure AI Foundry `gpt-oss-120b`, then Groq and Gemini free tiers; plain fetch,
 no SDK — `lib/ai.ts`). No key set = both stay hidden.
-- **Looking back** — a few calm sentences about a finished week or month. On the
-  Progress screen for whichever week or month is being viewed; on Today for a few
-  days after it ends (Mon–Wed, 1st–3rd). Written once by `/api/cron/reflect` (Vercel
-  Cron, daily 02:00 PKT) from what was done only, stored in `reflections`
-  (`supabase/migrate-003.sql`). Open the route in the app while unlocked to run it by hand.
+- **Looking back** — a few calm sentences about a finished week or month, from what
+  was done only. Three kinds, all in `reflections` (`supabase/migrate-003.sql`, `-004.sql`):
+  the whole week/month (Progress screen for the period viewed; Today for a few days
+  after it ends), one habit's month (habit page, under Rhythm) and one goal's month
+  (goal page). `/api/cron/reflect` (Vercel Cron, daily 02:00 PKT) writes whatever is
+  missing, newest first, up to 25 notes a run; open it in the app while unlocked to run
+  it by hand. A period with nothing done gets no note.
 - **Suggest a few** in the objective form drafts 2–3 key results from the title;
   nothing saves until you do.
 

@@ -32,7 +32,7 @@ export async function getDashboard(): Promise<Dashboard> {
     supabase.from('logs').select('*').order('logged_at', { ascending: false }).limit(2000),
     supabase.from('objectives').select('*').order('created_at'),
     supabase.from('key_results').select('*').order('sort_order'),
-    supabase.from('reflections').select('*').order('period_start', { ascending: false }).limit(60),
+    supabase.from('reflections').select('*').order('period_start', { ascending: false }).limit(300),
   ]);
 
   for (const r of [habits, activities, logs, objectives, keyResults, reflections]) {

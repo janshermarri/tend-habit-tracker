@@ -18,7 +18,7 @@ export function lastPeriod(kind: Period, now = new Date()): P.Range {
 export function reflectionForToday(reflections: Reflection[], now = new Date()): { title: string; text: string } | null {
   const pick = (kind: Period) => {
     const start = P.toDateKey(lastPeriod(kind, now).start);
-    return reflections.find((r) => r.kind === kind && r.period_start === start);
+    return reflections.find((r) => r.kind === kind && r.subject === '' && r.period_start === start);
   };
   const weekday = (now.getDay() + 6) % 7; // Monday = 0
   if (now.getDate() <= 3) {

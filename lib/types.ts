@@ -52,6 +52,8 @@ export type KeyResultType = KeyResult['type'];
 export type Reflection = {
   id: string;
   kind: Period;
+  /** '' = everything; 'habit:<id>' | 'objective:<id>' = one thing, for that month. */
+  subject: string;
   period_start: string;    // YYYY-MM-DD
   text: string;
   model: string;

@@ -6,6 +6,7 @@ import { CheckInList, type CheckInGroup } from './CheckInList';
 import { SectionTitle } from './Controls';
 import { ChevronIcon } from './icons';
 import { MonthCalendar, type CalendarWeek } from './MonthHabitRows';
+import { ReflectionCard } from './ReflectionCard';
 
 export type HabitDetailScreenProps = {
   name: string;
@@ -16,7 +17,9 @@ export type HabitDetailScreenProps = {
   status: string;           // statusLine()
   done: boolean;
   /** Rhythm: one month's dot calendar, stepped with the arrows */
-  rhythm: { label: string; summary: string; done: boolean; weeks: CalendarWeek[]; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void };
+  rhythm: { label: string; summary: string; done: boolean; weeks: CalendarWeek[]; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void;
+    /** This habit's note for the month shown, once it has ended. */
+    reflection: string | null };
   rhythmAllSummary: string; // "On target 31 of 52 weeks since May 2026"
   mix: { name: string; count: number }[]; // check-ins by activity, desc
   goals: { id: string; title: string; progress: number; note: string; onOpen: () => void }[];
@@ -70,6 +73,7 @@ export function HabitDetailScreen(p: HabitDetailScreenProps) {
           </div>
           <MonthCalendar weeks={p.rhythm.weeks} />
         </div>
+        {p.rhythm.reflection && <ReflectionCard plain title={p.rhythm.label} text={p.rhythm.reflection} />}
       </div>
 
       {p.mix.length > 0 && (
