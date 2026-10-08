@@ -9,6 +9,7 @@
  * this component with fresh rows and retires the optimistic entry.
  */
 import { useMemo, useOptimistic, useState, useTransition } from 'react';
+import { reflectionForToday } from '@/lib/reflect-today';
 import * as A from '@/lib/actions';
 import { useTheme } from '@/lib/use-theme';
 import type { Dashboard } from '@/lib/queries';
@@ -37,7 +38,7 @@ type OptimisticOp =
   | { kind: 'remove'; id: string };
 
 export default function TendApp({ data }: { data: Dashboard }) {
-  const { habits, activities, objectives, keyResults } = data;
+  const { habits, activities, objectives, keyResults, reflections } = data;
 
   // Logs are the only rows that change often enough to need optimistic echo.
   const [logs, applyOptimistic] = useOptimistic(data.logs, (state: Log[], op: OptimisticOp) => {
@@ -439,6 +440,7 @@ export default function TendApp({ data }: { data: Dashboard }) {
               greeting={hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}
               summary={weekly.length ? { main: `${weekly.filter((h) => h.done).length} of ${weekly.length} weekly habits done`, rest: ` · ${weekLeft} day${weekLeft === 1 ? '' : 's'} left in the week` } : null}
               weekly={weekly} monthly={monthly} suggestions={SUGGESTIONS}
+              reflection={reflectionForToday(reflections, now)}
               onAddHabit={(name) => openHabitForm(undefined, name)}
               headerAction={themeBtn}
               goals={activeGoals.slice(0, 3).map((o) => {
@@ -574,6 +576,18 @@ export default function TendApp({ data }: { data: Dashboard }) {
         habits={habits.map(({ id, name, period }) => ({ id, name, period }))}
         periodsInTimeframe={(period: Period, months: Timeframe) => P.periodsBetween(period, P.startOfDay(now), P.addMonths(P.startOfDay(now), months)).length}
         onChange={(draft) => setObjForm((f) => f && { ...f, draft })}
+        onSuggest={data.ai ? async () => {
+          if (!objForm) return;
+          const { title, area, timeframe_months } = objForm.draft;
+          try {
+            const krs = await A.suggestKeyResults({ title, area, timeframe_months });
+            // Suggestions join what's there; blank rows make way for them.
+            setObjForm((f) => f && { ...f, draft: { ...f.draft, key_results: [...f.draft.key_results.filter((k) => k.title.trim() || k.id), ...krs] } });
+            setError(null);
+          } catch (e) {
+            setError(e instanceof Error ? e.message : 'Something went wrong.');
+          }
+        } : undefined}
         onSave={saveObjective}
         onCancel={() => setObjForm(null)}
         onDelete={objForm?.id ? () => deleteObjective(objForm.id!) : undefined}

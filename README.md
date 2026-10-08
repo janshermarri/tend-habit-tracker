@@ -49,5 +49,16 @@ Components and Server Actions using the secret key, which stays on the server
 - Tone: no red, no streaks, no guilt copy. Over-target reads "a little extra this week".
 - Dark mode: set `data-theme="dark"` on `<html>`. Motion respects `prefers-reduced-motion`.
 
+## AI (optional)
+Two small touches, both through the same provider chain as the expense tracker
+(Azure AI Foundry `gpt-oss-120b`, then Groq and Gemini free tiers; plain fetch,
+no SDK — `lib/ai.ts`). No key set = both stay hidden.
+- **Looking back** — a few calm sentences about the week (shown Mon–Wed) or month
+  (1st–3rd) that just ended, on Today. Written once by `/api/cron/reflect` (Vercel
+  Cron, daily 02:00 PKT) from what was done only, stored in `reflections`
+  (`supabase/migrate-003.sql`). Open the route in the app while unlocked to run it by hand.
+- **Suggest a few** in the objective form drafts 2–3 key results from the title;
+  nothing saves until you do.
+
 ## Schema
 See [`supabase/schema.sql`](supabase/schema.sql) — the source of truth.

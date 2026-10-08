@@ -6,10 +6,11 @@ import { redirect } from 'next/navigation';
 import { db } from './supabase/server';
 import { SESSION_COOKIE, SESSION_MAX_AGE, issueSession, isSessionValid, verifyPin } from './session';
 import { clear, registerAttempt } from './rate-limit';
-import type { HabitDraft, ObjectiveDraft } from './drafts';
-import type { Area } from './types';
+import type { HabitDraft, KeyResultDraft, ObjectiveDraft } from './drafts';
+import type { Area, Habit, Timeframe } from './types';
 import type { UnlockState } from './unlock-state';
 import { insertLog, patchKeyResult, resolveLoggedAt } from './writes';
+import { suggestKeyResults as suggest } from './suggest';
 import * as P from './progress';
 
 /**
@@ -254,6 +255,20 @@ export async function saveObjective(id: string | null, draft: ObjectiveDraft): P
   }
 
   refresh();
+}
+
+/** AI-drafted key results for the form. Reads habits here rather than trusting the client's list. */
+export async function suggestKeyResults(objective: { title: string; area: Area; timeframe_months: Timeframe }): Promise<KeyResultDraft[]> {
+  await requireSession();
+  const title = objective.title.trim();
+  if (!title) throw new Error('Give the objective a title first.');
+  if (!AREAS.includes(objective.area) || ![1, 3, 6].includes(objective.timeframe_months)) throw new Error('That objective is not valid.');
+  const { data, error } = await db().from('habits').select('id, name, period');
+  if (error) throw new Error(error.message);
+  const start = P.startOfDay(new Date());
+  const end = P.addMonths(start, objective.timeframe_months);
+  const habits = ((data ?? []) as Pick<Habit, 'id' | 'name' | 'period'>[]).map((h) => ({ ...h, periods: P.periodsBetween(h.period, start, end).length }));
+  return suggest({ ...objective, title }, habits);
 }
 
 export async function deleteObjective(id: string): Promise<void> {

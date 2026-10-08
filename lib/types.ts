@@ -47,3 +47,13 @@ export type HabitKeyResult = KeyResultBase & { type: 'habit'; habit_id: string; 
 
 export type KeyResult = MilestoneKeyResult | NumberKeyResult | HabitKeyResult;
 export type KeyResultType = KeyResult['type'];
+
+/** An AI-written "Looking back" note for one finished week or month. */
+export type Reflection = {
+  id: string;
+  kind: Period;
+  period_start: string;    // YYYY-MM-DD
+  text: string;
+  model: string;
+  created_at: string;
+};

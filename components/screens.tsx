@@ -31,6 +31,8 @@ export type TodayScreenProps = {
   monthly: HabitVM[];
   suggestions: string[];
   onAddHabit: (suggestedName?: string) => void;
+  /** AI "Looking back" note for the period that just ended; null once it has had its few days. */
+  reflection: { title: string; text: string } | null;
   headerAction?: React.ReactNode; // theme toggle on mobile
   /** Up to three goals still in their timeframe. Empty hides the section — goals stay optional. */
   goals: TodayGoalProps[];
@@ -83,6 +85,14 @@ export function TodayScreen(p: TodayScreenProps) {
         </div>
         {p.headerAction}
       </header>
+
+      {/* A few sentences about the week or month that just ended — what was done, nothing else. */}
+      {p.reflection && !empty && (
+        <div className="flex flex-col gap-2 rounded-lg bg-accent-soft px-[18px] py-4 animate-rise">
+          <SectionTitle>Looking back · {p.reflection.title}</SectionTitle>
+          <p className="font-serif text-[17px] leading-relaxed text-pretty">{p.reflection.text}</p>
+        </div>
+      )}
 
       {p.weekly.length > 0 && (
         <div className="flex flex-col gap-3">

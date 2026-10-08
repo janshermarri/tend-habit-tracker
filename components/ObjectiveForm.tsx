@@ -24,6 +24,8 @@ type ObjectiveFormProps = {
   /** number of weeks/months in the timeframe for a given period — caps target_periods */
   periodsInTimeframe: (period: Period, months: Timeframe) => number;
   onChange: (next: ObjectiveDraft) => void;
+  /** AI draft of key results for the current title; absent when no provider is configured. */
+  onSuggest?: () => Promise<void>;
   onSave: () => void;
   onCancel: () => void;
   onDelete?: () => void;
@@ -50,6 +52,12 @@ export function ObjectiveForm(p: ObjectiveFormProps) {
     k.type === 'habit' ? p.habits.find((h) => h.id === k.habit_id) ?? p.habits[0] : undefined;
   // A habit KR needs no title of its own; it borrows the habit's name.
   const canSave = !!draft.title.trim() && draft.key_results.some((k) => k.title.trim() || habitFor(k));
+  const [suggesting, setSuggesting] = useState(false);
+  const suggest = async () => {
+    if (!p.onSuggest || suggesting) return;
+    setSuggesting(true);
+    try { await p.onSuggest(); } finally { setSuggesting(false); }
+  };
 
   return (
     <Sheet open={p.open} onClose={p.onCancel} label={p.mode === 'edit' ? 'Edit objective' : 'New objective'} maxWidth="max-w-[600px]">
@@ -80,7 +88,14 @@ export function ObjectiveForm(p: ObjectiveFormProps) {
         </div>
 
         <div className="flex flex-col gap-3">
-          <FieldLabel hint="How you’ll know it’s moving. Progress is the average of these.">Key results</FieldLabel>
+          <div className="flex items-start justify-between gap-3">
+            <FieldLabel hint="How you’ll know it’s moving. Progress is the average of these.">Key results</FieldLabel>
+            {p.onSuggest && draft.title.trim() && (
+              <button type="button" onClick={suggest} disabled={suggesting} className="h-9 shrink-0 px-1 text-sm font-medium text-accent-ink hover:text-ink disabled:text-ink-3">
+                {suggesting ? 'Thinking…' : 'Suggest a few'}
+              </button>
+            )}
+          </div>
 
           {draft.key_results.map((k, i) => {
             const habit = habitFor(k);
