@@ -12,6 +12,7 @@ Drop-in `app/`, `components/`, `lib/`, `public/` for a Next.js 14+ App Router pr
    - `APP_SECRET` — `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`
    - `APP_PIN_HASH` — `npm run pin -- 123456`
 4. `npm run dev`
+5. Optional: AI keys (see [AI](#ai-optional)) and `CRON_SECRET` for the daily note.
 
 Add PNG icons to `public/` (see the manifest) for a complete PWA install.
 
@@ -21,6 +22,8 @@ HTTP-only session cookie lasting 14 days; `/unlock` takes the 6-digit PIN, which
 verified server-side against a scrypt hash and rate-limited to 5 attempts per 15
 minutes. A 6-digit PIN is small enough to brute-force, so put **Vercel Deployment
 Protection** in front of any deployment — the PIN is the inner lock, not the only one.
+`/api/hub` (bearer `HUB_API_TOKEN`) and `/api/cron` (bearer `CRON_SECRET`, hub token or
+session) skip the PIN gate and check their own credentials; Vercel Cron passes protection.
 
 The browser never talks to Supabase. All reads and writes go through Server
 Components and Server Actions using the secret key, which stays on the server
@@ -34,6 +37,8 @@ Components and Server Actions using the secret key, which stays on the server
 - `lib/session.ts` · `lib/rate-limit.ts` — PIN verification and the signed session cookie.
 - `lib/drafts.ts` — form draft shapes, shared by the client forms and the actions.
 - `lib/progress.ts` — pure functions: habit period stats, status line, key result / objective progress (objective = average of KRs), time left.
+- `lib/ai.ts` — `complete()`: one-shot chat completion through Azure → Groq → Gemini, plain fetch. `lib/reflect.ts` builds the "Looking back" facts and stores the note; `lib/reflect-today.ts` (client-safe) picks which note Today shows; `lib/suggest.ts` drafts key results.
+- `app/api/cron/reflect/` — daily Vercel Cron that writes the note. `app/api/hub/` — the hub's bearer-token API.
 - `components/` — presentational only, no fetching:
   `ProgressRing`, `ProgressBar`, `HabitCard`, `LogSheet`, `Sheet` (bottom sheet → dialog on desktop), `ObjectiveCard`,
   `KeyResultRow` (`MilestoneRow` / `NumberRow` / `HabitLinkedRow`), `BottomNav` + `SideNav`, `EmptyState`,
