@@ -60,8 +60,8 @@ const activityMix = (logs: Log[], activityName: Map<string, string>) => {
 };
 
 /** Only good news about a target: reached, or how much extra. Nothing otherwise. */
-const targetNews = (count: number, target: number) =>
-  count > target ? { targetReached: true, extra: count - target } : count === target ? { targetReached: true } : {};
+const targetNews = (count: number, target: number, period: Period) =>
+  count >= target ? { target: `${target} per ${period}`, targetReached: true, ...(count > target && { extra: count - target }) } : {};
 
 /** Weeks (or months) inside `range` where the habit reached its target. */
 const periodsHit = (h: Habit, logs: Log[], range: P.Range, now: Date) =>
@@ -83,8 +83,8 @@ export function reflectionFacts(t: Target, d: Data, now = new Date()): object | 
     const mine = logs.filter((l) => h && l.habit_id === h.id);
     if (!h || !mine.length) return null;
     return {
-      habit: h.name, target: `${h.target} per ${h.period}`, month: dates, checkIns: mine.length,
-      ...(h.period === 'month' && targetNews(mine.length, h.target)),
+      habit: h.name, month: dates, checkIns: mine.length,
+      ...(h.period === 'month' && targetNews(mine.length, h.target, h.period)),
       ...(activityMix(mine, activityName) && { activities: activityMix(mine, activityName) }),
       notes: noteList(mine, habitName, 'month', 5),
     };
@@ -113,7 +113,7 @@ export function reflectionFacts(t: Target, d: Data, now = new Date()): object | 
     habits: d.habits.flatMap((h) => {
       const mine = logs.filter((l) => l.habit_id === h.id);
       if (!mine.length) return [];
-      return [{ name: h.name, target: `${h.target} per ${h.period}`, checkIns: mine.length, ...(h.period === kind && targetNews(mine.length, h.target)), ...(activityMix(mine, activityName) && { activities: activityMix(mine, activityName) }) }];
+      return [{ name: h.name, checkIns: mine.length, ...(h.period === kind && targetNews(mine.length, h.target, h.period)), ...(activityMix(mine, activityName) && { activities: activityMix(mine, activityName) }) }];
     }),
     notes: noteList(logs, habitName, kind, 8),
   };
