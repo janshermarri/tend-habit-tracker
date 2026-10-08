@@ -26,12 +26,18 @@ export async function hubDashboard(now = new Date()) {
   // Last 7 days of completions, so a "what did I do today / this week" question needs no second call.
   const since = new Date(now.getTime() - 7 * 86_400_000).toISOString();
   const habitName = new Map(habits.map((h) => [h.id, h.name]));
+  const activityName = new Map(activities.map((a) => [a.id, a.name]));
   return {
     habits: habits.map((h) => ({ ...h, stats: P.habitStats(h, logs, now) })),
     activities: activities.map(({ id, habit_id, name }) => ({ id, habit_id, name })),
     recentLogs: logs
       .filter((l) => l.logged_at >= since)
-      .map((l) => ({ habit: habitName.get(l.habit_id) ?? l.habit_id, at: l.logged_at, note: l.note ?? null })),
+      .map((l) => ({
+        habit: habitName.get(l.habit_id) ?? l.habit_id,
+        activity: (l.activity_id && activityName.get(l.activity_id)) || null,
+        at: l.logged_at,
+        note: l.note ?? null,
+      })),
     objectives: objectives.map((o) => {
       const krs = keyResults.filter((k) => k.objective_id === o.id);
       return {
