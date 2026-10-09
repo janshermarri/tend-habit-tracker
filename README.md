@@ -1,5 +1,7 @@
 # Tend — habit & goal tracker (Next.js + Tailwind v4)
 
+![Tend, the Today screen: weekly habits and the goal they serve](docs/today.jpg)
+
 Drop-in `app/`, `components/`, `lib/`, `public/` for a Next.js 14+ App Router project with Tailwind CSS v4.
 `Habit Tracker.dc.html` (project root) is the interactive visual reference — same tokens, same copy.
 
