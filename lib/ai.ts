@@ -1,7 +1,7 @@
 import 'server-only';
 
 /**
- * One-shot chat completion through the same provider chain the expense tracker
+ * One-shot chat completion through the same provider chain Ledger
  * uses: Azure AI Foundry (paid, gpt-oss-120b) → Groq (free, gpt-oss) → Gemini
  * (free). All three speak the OpenAI chat/completions shape, so this is plain
  * fetch with no SDK. Providers without a key are skipped; a failing one falls

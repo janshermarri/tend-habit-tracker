@@ -57,7 +57,7 @@ Components and Server Actions using the secret key, which stays on the server
 - Dark mode: set `data-theme="dark"` on `<html>`. Motion respects `prefers-reduced-motion`.
 
 ## AI (optional)
-Two small touches, both through the same provider chain as the expense tracker
+Two small touches, both through the same provider chain as Ledger
 (Azure AI Foundry `gpt-oss-120b`, then Groq and Gemini free tiers; plain fetch,
 no SDK — `lib/ai.ts`). No key set = both stay hidden.
 - **Looking back** — a few calm sentences about a finished week or month, from what
