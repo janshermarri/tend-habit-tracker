@@ -39,7 +39,7 @@ Components and Server Actions using the secret key, which stays on the server
 - `lib/session.ts` · `lib/rate-limit.ts` — PIN verification and the signed session cookie.
 - `lib/drafts.ts` — form draft shapes, shared by the client forms and the actions.
 - `lib/progress.ts` — pure functions: habit period stats, status line, key result / objective progress (objective = average of KRs), time left.
-- `lib/ai.ts` — `complete()`: one-shot chat completion through Azure → Groq → Gemini, plain fetch. `lib/reflect.ts` builds the "Looking back" facts and stores the note; `lib/reflect-today.ts` (client-safe) picks which note Today shows; `lib/suggest.ts` drafts key results.
+- `lib/ai.ts` — `complete()`: one-shot chat completion through Claude → Azure → Groq. `lib/reflect.ts` builds the "Looking back" facts and stores the note; `lib/reflect-today.ts` (client-safe) picks which note Today shows; `lib/suggest.ts` drafts key results.
 - `app/api/cron/reflect/` — daily Vercel Cron that writes the note. `app/api/hub/` — the hub's bearer-token API.
 - `components/` — presentational only, no fetching:
   `ProgressRing`, `ProgressBar`, `HabitCard`, `LogSheet`, `Sheet` (bottom sheet → dialog on desktop), `ObjectiveCard`,
@@ -57,9 +57,9 @@ Components and Server Actions using the secret key, which stays on the server
 - Dark mode: set `data-theme="dark"` on `<html>`. Motion respects `prefers-reduced-motion`.
 
 ## AI (optional)
-Two small touches, both through the same provider chain as Ledger
-(Azure AI Foundry `gpt-oss-120b`, then Groq and Gemini free tiers; plain fetch,
-no SDK — `lib/ai.ts`). No key set = both stay hidden.
+Two small touches, both through one provider chain in `lib/ai.ts`: Claude Haiku 5.5
+(`ANTHROPIC_API_KEY`, `CLAUDE_MODEL`; key suggestions use structured output), then
+Azure AI Foundry `gpt-oss-120b`, then Groq (plain fetch). No key set = both stay hidden.
 - **Looking back** — a few calm sentences about a finished week or month, from what
   was done only. Three kinds, all in `reflections` (`supabase/migrate-003.sql`, `-004.sql`):
   the whole week/month (Progress screen for the period viewed; Today for a few days

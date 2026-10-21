@@ -1,21 +1,26 @@
 import 'server-only';
+import Anthropic from '@anthropic-ai/sdk';
 
 /**
- * One-shot chat completion through the same provider chain Ledger
- * uses: Azure AI Foundry (paid, gpt-oss-120b) → Groq (free, gpt-oss) → Gemini
- * (free). All three speak the OpenAI chat/completions shape, so this is plain
- * fetch with no SDK. Providers without a key are skipped; a failing one falls
- * through to the next. AI_PROVIDER reorders the chain ("groq,azure,gemini").
+ * One-shot chat completion through a provider chain: Claude Haiku (Anthropic
+ * SDK) → Azure AI Foundry (gpt-oss-120b) → Groq (free, gpt-oss). Azure and Groq
+ * speak the OpenAI chat/completions shape, so those are plain fetch. Providers
+ * without a key are skipped; a failing one falls through to the next.
+ * AI_PROVIDER reorders the chain ("groq,azure,claude").
  */
-type Endpoint = { label: string; url: string; headers: Record<string, string>; models: string[]; maxField: string; jsonMode: boolean };
+type Endpoint = { label: string; url: string; headers: Record<string, string>; models: string[]; maxField: string; jsonMode: boolean; sdk?: boolean };
 
-const ORDER = ['azure', 'groq', 'gemini'] as const;
+const ORDER = ['claude', 'azure', 'groq'] as const;
 type Provider = (typeof ORDER)[number];
 
 const list = (v: string | undefined, fallback: string) =>
   (v ?? fallback).split(',').map((s) => s.trim()).filter(Boolean);
 
 const ENDPOINTS: Record<Provider, () => Endpoint | null> = {
+  claude: () => {
+    if (!process.env.ANTHROPIC_API_KEY) return null;
+    return { label: 'Claude', url: '', headers: {}, models: [process.env.CLAUDE_MODEL || 'claude-haiku-5-5'], maxField: '', jsonMode: true, sdk: true };
+  },
   azure: () => {
     const base = process.env.AZURE_AI_ENDPOINT?.replace(/\/+$/, '');
     const key = process.env.AZURE_AI_KEY;
@@ -30,11 +35,6 @@ const ENDPOINTS: Record<Provider, () => Endpoint | null> = {
     const primary = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
     const models = [primary, ...list(process.env.GROQ_FALLBACK_MODEL, 'openai/gpt-oss-20b').filter((m) => m !== primary)];
     return { label: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', headers: { Authorization: `Bearer ${key}` }, models, maxField: 'max_completion_tokens', jsonMode: true };
-  },
-  gemini: () => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) return null;
-    return { label: 'Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', headers: { Authorization: `Bearer ${key}` }, models: [process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite'], maxField: 'max_tokens', jsonMode: true };
   },
 };
 
@@ -60,17 +60,42 @@ export function parseJsonObject(text: string): Record<string, unknown> | null {
   }
 }
 
+let anthropic: Anthropic | undefined;
+
+/** Claude via the SDK. Thinking counts toward max_tokens, so leave room; `schema` turns on structured output. */
+async function claude(model: string, system: string, user: string, schema?: object): Promise<string> {
+  anthropic ??= new Anthropic();
+  const res = await anthropic.messages.create(
+    {
+      model,
+      max_tokens: 2048,
+      system,
+      messages: [{ role: 'user', content: user }],
+      output_config: { effort: 'low', ...(schema && { format: { type: 'json_schema' as const, schema: schema as Record<string, unknown> } }) },
+    },
+    { signal: AbortSignal.timeout(25_000) },
+  );
+  if (res.stop_reason === 'refusal' || res.stop_reason === 'max_tokens') throw new Error(`stopped: ${res.stop_reason}`);
+  return res.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('').trim();
+}
+
 /**
  * The first provider's answer. `json` asks for a JSON object and counts a reply
  * that isn't one as a failure, so the chain moves on to the next model.
  */
-export async function complete(system: string, user: string, opts: { json?: boolean } = {}): Promise<Completion> {
+export async function complete(system: string, user: string, opts: { json?: boolean; schema?: object } = {}): Promise<Completion> {
   const endpoints = chain();
   if (!endpoints.length) throw new Error('No AI provider is configured.');
 
   for (const ep of endpoints) {
     for (const model of ep.models) {
       try {
+        if (ep.sdk) {
+          const text = await claude(model, system, user, opts.schema);
+          if (!text) throw new Error('empty answer');
+          if (opts.json && !parseJsonObject(text)) throw new Error(`not a JSON object: ${text.slice(0, 120)}`);
+          return { text, model };
+        }
         const res = await fetch(ep.url, {
           method: 'POST',
           headers: { ...ep.headers, 'Content-Type': 'application/json' },

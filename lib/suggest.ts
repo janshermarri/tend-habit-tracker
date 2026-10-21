@@ -24,6 +24,31 @@ Rules:
 - "habit": use at most one, and only if a listed habit clearly serves the objective; "target_periods" is how many weeks (or months, for a monthly habit) the habit should reach its target — at most the "periods" given for it.
 - No advice, no explanations, no markdown — the JSON object only.`;
 
+// Structured output for Claude; the fallbacks follow the same shape from the prompt.
+const SCHEMA = {
+  type: 'object',
+  properties: {
+    key_results: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['milestone', 'number', 'habit'] },
+          title: { type: 'string' },
+          target_value: { type: 'integer' },
+          unit: { type: 'string' },
+          habit_id: { type: 'string' },
+          target_periods: { type: 'integer' },
+        },
+        required: ['type'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['key_results'],
+  additionalProperties: false,
+};
+
 const TYPES = ['milestone', 'number', 'habit'] as const;
 
 export async function suggestKeyResults(
@@ -36,7 +61,7 @@ export async function suggestKeyResults(
     timeframe: `${objective.timeframe_months} month${objective.timeframe_months === 1 ? '' : 's'}`,
     habits: habits.map((h) => ({ id: h.id, name: h.name, period: h.period, periods: h.periods })),
   });
-  const { text } = await complete(SYSTEM, user, { json: true });
+  const { text } = await complete(SYSTEM, user, { json: true, schema: SCHEMA });
 
   const parsed = parseJsonObject(text) ?? {};
   const items = Array.isArray(parsed.key_results) ? parsed.key_results : [];
