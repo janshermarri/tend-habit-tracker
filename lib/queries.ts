@@ -26,18 +26,27 @@ export type Dashboard = {
 export async function getDashboard(): Promise<Dashboard> {
   const supabase = db();
 
-  const [habits, activities, logs, objectives, keyResults, reflections] = await Promise.all([
-    supabase.from('habits').select('*').order('sort_order'),
-    supabase.from('activities').select('*'),
-    supabase.from('logs').select('*').order('logged_at', { ascending: false }).limit(2000),
-    supabase.from('objectives').select('*').order('created_at'),
-    supabase.from('key_results').select('*').order('sort_order'),
-    supabase.from('reflections').select('*').order('period_start', { ascending: false }).limit(300),
-  ]);
-
-  for (const r of [habits, activities, logs, objectives, keyResults, reflections]) {
-    if (r.error) throw new Error(`Supabase query failed: ${r.error.message}`);
+  // Supabase's clock can run ahead of PostgREST's, so a cold first read is
+  // sometimes rejected with "JWT issued at future". It clears in a moment: retry.
+  let result;
+  for (let attempt = 0; ; attempt++) {
+    result = await Promise.all([
+      supabase.from('habits').select('*').order('sort_order'),
+      supabase.from('activities').select('*'),
+      supabase.from('logs').select('*').order('logged_at', { ascending: false }).limit(2000),
+      supabase.from('objectives').select('*').order('created_at'),
+      supabase.from('key_results').select('*').order('sort_order'),
+      supabase.from('reflections').select('*').order('period_start', { ascending: false }).limit(300),
+    ]);
+    const failed = result.find((r) => r.error);
+    if (!failed) break;
+    if (attempt < 2 && failed.error!.message.includes('JWT issued at future')) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      continue;
+    }
+    throw new Error(`Supabase query failed: ${failed.error!.message}`);
   }
+  const [habits, activities, logs, objectives, keyResults, reflections] = result;
 
   return {
     habits: (habits.data ?? []) as Habit[],

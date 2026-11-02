@@ -1,16 +1,16 @@
 # STATUS.md — current task
 
-**Goal:** Claude Haiku 5.5 runs every AI call in Tend (decided 2026-10-21, same decision in Compass and Ledger).
+**Goal:** Fix "JWT issued at future" crashing the cold open (Vercel log: GET /, thrown from `getDashboard()`).
 
 ## Decisions
-- Model `claude-haiku-5-5` via `CLAUDE_MODEL`; key env **`ANTHROPIC_API_KEY`** (SDK default, `new Anthropic()`). Package `@anthropic-ai/sdk` (same version as Compass, ^0.132.1).
-- One key shared with Compass and Ledger; $5/month limit set in the Anthropic Console.
-- Chain in `lib/ai.ts`: claude → azure → groq. **Gemini removed.**
-- KR suggestions (`lib/suggest.ts`) use Claude structured output; "Looking back" (`lib/reflect.ts`) stays prose.
-- A Claude `refusal` stop reason counts as an error, so the chain falls through.
+- Cause: Supabase's clock is slightly ahead of PostgREST's, so the first request with a fresh JWT is rejected. Transient.
+- Retry the whole dashboard read only on that error: up to 2 retries, ~1s before each. Other errors throw at once.
+- `lib/hub.ts` reuses `getDashboard()` (covered). `lib/rate-limit.ts` fails open and logs, so unlock is unaffected. No shared helper needed.
 
 ## Steps
-- [x] Claude provider first in `lib/ai.ts`, Gemini out
-- [x] `suggest.ts` structured output on Claude
-- [x] README AI section + CLAUDE.md (if it mentions AI) updated
-- [x] Live test 2026-10-21: KR suggestion + weekly note on Claude (reflect via complete(), DB-writing path skipped). Build not re-run (no code change).
+- [x] Retry loop in `getDashboard()` (`lib/queries.ts`)
+- [x] Checked other `lib/` Supabase reads: nothing else to change
+- [x] `npm run typecheck` and `npm run build`
+
+## Verified
+- typecheck and build pass.
